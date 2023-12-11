@@ -220,3 +220,11 @@ pub async fn process_cpu_data(proc_data: ProcData, statistics: &mut HashMap<(Str
         );
 
 }
+pub async fn print_cpu(statistics: &HashMap<(String, String), Statistic>)
+{
+    println!("{} {} {}",
+             statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().delta_value,
+             statistics.get(&("cpu".to_string(), "nice".to_string())).unwrap().delta_value,
+             statistics.get(&("cpu".to_string(), "system".to_string())).unwrap().delta_value,
+    );
+}

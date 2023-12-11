@@ -3,7 +3,7 @@ use time::Duration;
 use tokio::time;
 use std::collections::HashMap;
 
-use procstat::{read_proc_data, process_data, Statistic};
+use procstat::{read_proc_data, process_data, Statistic, print_cpu};
 #[tokio::main]
 async fn main()
 {
@@ -16,6 +16,6 @@ async fn main()
         let data = read_proc_data().await;
         process_data(data, &mut statistics).await;
 
-        println!("{:?}", statistics);
+        print_cpu(&statistics).await;
     }
 }
