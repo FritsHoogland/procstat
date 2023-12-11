@@ -2,7 +2,7 @@ use proc_sys_parser;
 use time::Duration;
 use tokio::time;
 
-use procstat::{ProcData, read_proc_data};
+use procstat::read_proc_data;
 #[tokio::main]
 async fn main()
 {
