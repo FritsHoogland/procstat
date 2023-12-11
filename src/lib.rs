@@ -262,6 +262,7 @@ pub async fn cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, stati
 }
 pub async fn print_cpu(statistics: &HashMap<(String, String), Statistic>)
 {
+    if statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().new_value { return };
     let timestamp = statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().delta_value;
     let nice = statistics.get(&("cpu".to_string(), "nice".to_string())).unwrap().delta_value;

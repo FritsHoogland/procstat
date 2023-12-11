@@ -7,7 +7,7 @@ use procstat::{read_proc_data, process_data, Statistic, print_cpu};
 #[tokio::main]
 async fn main()
 {
-    let mut interval = time::interval(Duration::from_secs(2));
+    let mut interval = time::interval(Duration::from_millis(500));
     let mut statistics: HashMap<(String, String), Statistic> = HashMap::new();
     loop
     {
