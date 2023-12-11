@@ -62,7 +62,7 @@ pub async fn process_cpu_data(proc_data: ProcData, statistics: &mut HashMap<(Str
 }
 pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String), Statistic>)
 {
-    statistics.entry(("cpu".to_string(), "user".to_string()))
+    statistics.entry((cpu_data.name.clone(), "user".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.user as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -79,7 +79,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "nice".to_string()))
+    statistics.entry((cpu_data.name.clone(), "nice".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.nice as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -96,7 +96,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "system".to_string()))
+    statistics.entry((cpu_data.name.clone(), "system".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.system as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -113,7 +113,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "idle".to_string()))
+    statistics.entry((cpu_data.name.clone(), "idle".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.idle as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -130,7 +130,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "iowait".to_string()))
+    statistics.entry((cpu_data.name.clone(), "iowait".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.iowait as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -147,7 +147,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "irq".to_string()))
+    statistics.entry((cpu_data.name.clone(), "irq".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.irq as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -164,7 +164,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "softirq".to_string()))
+    statistics.entry((cpu_data.name.clone(), "softirq".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.softirq as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -181,7 +181,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "steal".to_string()))
+    statistics.entry((cpu_data.name.clone(), "steal".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.steal as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -198,7 +198,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "guest".to_string()))
+    statistics.entry((cpu_data.name.clone(), "guest".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.guest as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -215,7 +215,7 @@ pub async fn set_cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, s
                 new_value: true,
             }
         );
-    statistics.entry(("cpu".to_string(), "guest_nice".to_string()))
+    statistics.entry((cpu_data.name.clone(), "guest_nice".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.guest_nice as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
