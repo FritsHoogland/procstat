@@ -87,8 +87,61 @@ pub async fn single_statistic(
         );
 
 }
+
+
 pub async fn cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String), Statistic>)
 {
+
+    let (user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    //for xxxx in ["user", "nice", "system", "idle", "iowait", "irq", "softirq", "steal", "guest", "guest_nice"]
+    //{
+        macro_rules! add_cpu_data_field_to_statistics {
+            ($($field_name:ident),*) => {
+                $(
+                    statistics.entry((cpu_data.name.to_string(), $field_name.to_string()))
+                    .and_modify(|row| {
+                        row.delta_value = cpu_data.$field_name as f64 - row.last_value;
+                        row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
+                        row.last_value = cpu_data.$field_name as f64;
+                        row.last_timestamp = timestamp;
+                        row.new_value = false;
+                    })
+                    .or_insert(
+                        Statistic {
+                            last_timestamp: timestamp,
+                            last_value: cpu_data.$field_name as f64,
+                            delta_value: 0.0,
+                            per_second_value: 0.0,
+                            new_value: true,
+                        }
+                    );
+                )*
+            };
+        }
+        add_cpu_data_field_to_statistics!(user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice);
+        /*
+        statistics.entry((cpu_data.name.clone(), cpu_mode.to_string()))
+            .and_modify(|row| {
+                row.delta_value = cpu_data.cpu_mode as f64 - row.last_value;
+                row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
+                row.last_value = cpu_data.user as f64;
+                row.last_timestamp = timestamp;
+                row.new_value = false;
+            })
+            .or_insert(
+                Statistic {
+                    last_timestamp: timestamp,
+                    last_value: cpu_data.user as f64,
+                    delta_value: 0.0,
+                    per_second_value: 0.0,
+                    new_value: true,
+                }
+            );
+    }
+          */
+
+
+    /*
     statistics.entry((cpu_data.name.clone(), "user".to_string()))
         .and_modify(|row| {
             row.delta_value = cpu_data.user as f64 - row.last_value;
@@ -259,6 +312,8 @@ pub async fn cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, stati
                 new_value: true,
             }
         );
+
+     */
 }
 pub async fn print_cpu(statistics: &HashMap<(String, String), Statistic>)
 {
