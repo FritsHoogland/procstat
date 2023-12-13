@@ -53,7 +53,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
 
 pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
-    if !statistics.get(&("stat".to_string(), "cpu".to_string(), "user".to_string())).unwrap_or(&Statistic::default()).updated_value { return };
+    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().delta_value;
     let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().delta_value;
@@ -66,6 +66,8 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
     let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().delta_value;
     let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().delta_value;
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
+    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1000000_f64;
+    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1000000_f64;
     match output
     {
         "sar-u" => {
@@ -94,6 +96,24 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
                      softirq/total*100.,
                      guest_user/total*100.,
                      guest_nice/total*100.,
+            );
+        }
+        "cpu-all" => {
+            println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                     timestamp.format("%H:%M:%S"),
+                     "all",
+                     user,
+                     nice,
+                     system,
+                     iowait,
+                     steal,
+                     idle,
+                     irq,
+                     softirq,
+                     guest_user,
+                     guest_nice,
+                     scheduler_running,
+                     scheduler_waiting,
             );
         }
         &_ => todo!{},

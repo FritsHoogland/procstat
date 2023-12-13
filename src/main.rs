@@ -12,6 +12,7 @@ enum OutputOptions
     SarU,
     #[clap(name = "sar-u-ALL")]
     SarUAll,
+    CpuAll,
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -43,6 +44,7 @@ async fn main()
         {
             OutputOptions::SarU => print_cpu(&statistics, "sar-u").await,
             OutputOptions::SarUAll => print_cpu(&statistics, "sar-u-ALL").await,
+            OutputOptions::CpuAll => print_cpu(&statistics, "cpu-all").await,
         }
     }
 }
