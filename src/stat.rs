@@ -176,7 +176,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                          guest_nice / total * 100.,
                 );
             },
-            "percpu-all" => {
+            "per-cpu-all" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
