@@ -151,7 +151,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
             "mpstat-u" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
-                         "all",
+                         cpu_name,
                          user / total * 100.,
                          nice / total * 100.,
                          system / total * 100.,
@@ -163,7 +163,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
             "mapstat-u-ALL" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
-                         "all",
+                         cpu_name,
                          user / total * 100.,
                          nice / total * 100.,
                          system / total * 100.,
@@ -179,7 +179,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
             "percpu-all" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
-                         "all",
+                         cpu_name,
                          user,
                          nice,
                          system,
