@@ -103,19 +103,19 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         let guest_nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest_nice".to_string())).unwrap().delta_value;
         let idle = statistics.get(&("stat".to_string(), cpu_name.to_string(), "idle".to_string())).unwrap().delta_value;
         let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value;
-        let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value;
+        let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().delta_value;
         let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
         println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                  timestamp.format("%H:%M:%S"),
                  cpu_name,
-                 user/total* 100.,
-                 nice/total* 100.,
-                 system/total* 100.,
-                 iowait/total* 100.,
-                 steal/total* 100.,
-                 idle/total* 100.,
-                 scheduler_running/total* 100.,
-                 scheduler_waiting/total* 100.,
+                 user,
+                 nice,
+                 system,
+                 iowait,
+                 steal,
+                 idle,
+                 scheduler_running,
+                 scheduler_waiting,
         );
 
     }
