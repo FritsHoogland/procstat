@@ -74,32 +74,42 @@ pub async fn print_cpu(statistics: &HashMap<(String, String), Statistic>)
 
 pub async fn print_per_cpu(statistics: &HashMap<(String, String), Statistic>)
 {
-    let mut cpu_list: Vec<_> = statistics.keys().map(|(cpu_number, _)| cpu_number).filter(|cpu_number| cpu_number.starts_with("cpu") && cpu_number.len() > 3).collect::<HashSet<&String>>().into_iter().collect();
+    let mut cpu_list: Vec<_> = statistics.keys()
+        .map(|(cpu_number, _)| cpu_number)
+        .filter(|cpu_number| cpu_number.starts_with("cpu") && cpu_number.len() > 3)
+        .collect::<HashSet<&String>>()
+        .into_iter()
+        .collect();
     cpu_list.sort();
-    println!("{:?}", cpu_list);
+    for cpu_name in cpu_list
+    {
+        if statistics.get(&(cpu_name.to_string(), "user".to_string())).unwrap().new_value { return };
+        let timestamp = statistics.get(&(cpu_name.to_string(), "user".to_string())).unwrap().last_timestamp;
+        let user = statistics.get(&(cpu_name.to_string(), "user".to_string())).unwrap().delta_value;
+        let nice = statistics.get(&(cpu_name.to_string(), "nice".to_string())).unwrap().delta_value;
+        let system = statistics.get(&(cpu_name.to_string(), "system".to_string())).unwrap().delta_value;
+        let iowait = statistics.get(&(cpu_name.to_string(), "iowait".to_string())).unwrap().delta_value;
+        let steal = statistics.get(&(cpu_name.to_string(), "steal".to_string())).unwrap().delta_value;
+        let irq = statistics.get(&(cpu_name.to_string(), "irq".to_string())).unwrap().delta_value;
+        let softirq = statistics.get(&(cpu_name.to_string(), "softirq".to_string())).unwrap().delta_value;
+        let guest_user = statistics.get(&(cpu_name.to_string(), "guest".to_string())).unwrap().delta_value;
+        let guest_nice = statistics.get(&(cpu_name.to_string(), "guest_nice".to_string())).unwrap().delta_value;
+        let idle = statistics.get(&(cpu_name.to_string(), "idle".to_string())).unwrap().delta_value;
+        let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
+        println!("{:8} {:3} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                 timestamp.format("%H:%M:%S"),
+                 "all",
+                 user/total* 100.,
+                 nice/total* 100.,
+                 system/total* 100.,
+                 iowait/total* 100.,
+                 steal/total* 100.,
+                 idle/total* 100.,
+        );
+
+    }
+    //println!("{:?}", cpu_list);
     /*
-    if statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().new_value { return };
-    let timestamp = statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().last_timestamp;
-    let user = statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().delta_value;
-    let nice = statistics.get(&("cpu".to_string(), "nice".to_string())).unwrap().delta_value;
-    let system = statistics.get(&("cpu".to_string(), "system".to_string())).unwrap().delta_value;
-    let iowait = statistics.get(&("cpu".to_string(), "iowait".to_string())).unwrap().delta_value;
-    let steal = statistics.get(&("cpu".to_string(), "steal".to_string())).unwrap().delta_value;
-    let irq = statistics.get(&("cpu".to_string(), "irq".to_string())).unwrap().delta_value;
-    let softirq = statistics.get(&("cpu".to_string(), "softirq".to_string())).unwrap().delta_value;
-    let guest_user = statistics.get(&("cpu".to_string(), "guest".to_string())).unwrap().delta_value;
-    let guest_nice = statistics.get(&("cpu".to_string(), "guest_nice".to_string())).unwrap().delta_value;
-    let idle = statistics.get(&("cpu".to_string(), "idle".to_string())).unwrap().delta_value;
-    let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    println!("{:8} {:3} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-             timestamp.format("%H:%M:%S"),
-             "all",
-             user/total* 100.,
-             nice/total* 100.,
-             system/total* 100.,
-             iowait/total* 100.,
-             steal/total* 100.,
-             idle/total* 100.,
-    );
+
      */
 }
