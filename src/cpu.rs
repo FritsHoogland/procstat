@@ -74,7 +74,7 @@ pub async fn print_cpu(statistics: &HashMap<(String, String), Statistic>)
 
 pub async fn print_per_cpu(statistics: &HashMap<(String, String), Statistic>)
 {
-    let cpu_list: Vec<_> = statistics.keys().map(|(cpu_number, _)| cpu_number).filter(|cpu_number| *cpu_number == &"cpu".to_string()).collect();
+    let cpu_list: Vec<_> = statistics.keys().map(|(cpu_number, _)| cpu_number).filter(|cpu_number| cpu_number.starts_with("cpu") && cpu_number.len() > 3).collect();
     println!("{:?}", cpu_list);
     /*
     if statistics.get(&("cpu".to_string(), "user".to_string())).unwrap().new_value { return };
