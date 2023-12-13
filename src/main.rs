@@ -1,9 +1,10 @@
-//use proc_sys_parser;
 use time::Duration;
 use tokio::time;
 use std::collections::HashMap;
 
-use procstat::{read_proc_data, process_data, Statistic, print_cpu};
+use procstat::{read_proc_data, process_data, Statistic, cpu};
+use cpu::print_per_cpu;
+
 #[tokio::main]
 async fn main()
 {
@@ -16,6 +17,6 @@ async fn main()
         let data = read_proc_data().await;
         process_data(data, &mut statistics).await;
 
-        print_cpu(&statistics).await;
+        print_per_cpu(&statistics).await;
     }
 }
