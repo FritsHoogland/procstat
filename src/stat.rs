@@ -3,11 +3,11 @@ use chrono::{DateTime, Local};
 use proc_sys_parser::stat::CpuStat;
 use crate::{ProcData, single_statistic, Statistic};
 
-pub async fn process_stat_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
+pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
-    cpu_statistics(proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
-    for cpu_stat in proc_data.stat.cpu_individual {
-        cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await;
+    cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
+    for cpu_stat in &proc_data.stat.cpu_individual {
+        cpu_statistics(&cpu_stat, proc_data.timestamp, statistics).await;
     }
     single_statistic("stat", "","context_switches", proc_data.timestamp, proc_data.stat.context_switches, statistics).await;
     single_statistic("stat", "", "processes", proc_data.timestamp, proc_data.stat.processes, statistics).await;
@@ -17,7 +17,7 @@ pub async fn process_stat_data(proc_data: ProcData, statistics: &mut HashMap<(St
     single_statistic("stat", "", "softirq_total", proc_data.timestamp, proc_data.stat.softirq.first().cloned().unwrap(), statistics).await;
 }
 
-pub async fn cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String, String), Statistic>)
+pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
     let cpu_name = match cpu_data.name.as_str()
     {
@@ -65,7 +65,7 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
     let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().delta_value;
     let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().delta_value;
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    println!("{:8} {:7} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+    println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
              timestamp.format("%H:%M:%S"),
              "all",
              user/total* 100.,
@@ -80,7 +80,7 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
 pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>)
 {
     let mut cpu_list: Vec<_> = statistics.keys()
-        .filter(|(group, _, _)| group == "stat")
+        .filter(|(group, _, _)| group == "stat" || group == "schedstat")
         .map(|(_, cpu_specification, _)| cpu_specification)
         .filter(|cpu_specification| cpu_specification.starts_with("cpu") || *cpu_specification == "all")
         //.filter(|cpu_number| cpu_number.starts_with("cpu"))
@@ -102,8 +102,10 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         let guest_user = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest".to_string())).unwrap().delta_value;
         let guest_nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest_nice".to_string())).unwrap().delta_value;
         let idle = statistics.get(&("stat".to_string(), cpu_name.to_string(), "idle".to_string())).unwrap().delta_value;
+        let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value;
+        let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value;
         let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-        println!("{:8} {:7} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+        println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                  timestamp.format("%H:%M:%S"),
                  cpu_name,
                  user/total* 100.,
@@ -112,6 +114,8 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                  iowait/total* 100.,
                  steal/total* 100.,
                  idle/total* 100.,
+                 scheduler_running/total* 100.,
+                 scheduler_waiting/total* 100.,
         );
 
     }

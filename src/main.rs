@@ -2,8 +2,8 @@ use time::Duration;
 use tokio::time;
 use std::collections::HashMap;
 
-use procstat::{read_proc_data, process_data, Statistic, cpu};
-use cpu::print_per_cpu;
+use procstat::{read_proc_data, process_data, Statistic, stat};
+use stat::print_per_cpu;
 
 #[tokio::main]
 async fn main()

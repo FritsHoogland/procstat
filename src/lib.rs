@@ -1,20 +1,22 @@
-use proc_sys_parser::{schedstat, stat, meminfo, diskstats, net_dev};
+use proc_sys_parser::{schedstat as schedstat_internal, stat as stat_internal, meminfo as meminfo_internal, diskstats as diskstats_internal, net_dev as net_dev_internal};
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
 
-pub mod cpu;
+pub mod stat;
+pub mod schedstat;
 
-use cpu::process_stat_data;
+use stat::process_stat_data;
+use schedstat::process_schedstat_data;
 
 #[derive(Debug)]
 pub struct ProcData
 {
     pub timestamp: DateTime<Local>,
-    pub stat: stat::ProcStat,
-    pub schedstat: schedstat::ProcSchedStat,
-    pub meminfo: meminfo::ProcMemInfo,
-    pub diskstats: diskstats::ProcDiskStats,
-    pub net_dev: net_dev::ProcNetDev,
+    pub stat: stat_internal::ProcStat,
+    pub schedstat: schedstat_internal::ProcSchedStat,
+    pub meminfo: meminfo_internal::ProcMemInfo,
+    pub diskstats: diskstats_internal::ProcDiskStats,
+    pub net_dev: net_dev_internal::ProcNetDev,
 }
 
 #[derive(Debug)]
@@ -30,11 +32,11 @@ pub struct Statistic
 pub async fn read_proc_data() -> ProcData
 {
     let timestamp = Local::now();
-    let proc_stat = stat::read();
-    let proc_schedstat = schedstat::read();
-    let proc_meminfo = meminfo::read();
-    let proc_diskstats = diskstats::read();
-    let proc_netdev = net_dev::read();
+    let proc_stat = stat_internal::read();
+    let proc_schedstat = schedstat_internal::read();
+    let proc_meminfo = meminfo_internal::read();
+    let proc_diskstats = diskstats_internal::read();
+    let proc_netdev = net_dev_internal::read();
     ProcData {
         timestamp: timestamp,
         stat: proc_stat,
@@ -47,7 +49,8 @@ pub async fn read_proc_data() -> ProcData
 
 pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
-    process_stat_data(proc_data, statistics).await;
+    process_stat_data(&proc_data, statistics).await;
+    process_schedstat_data(&proc_data, statistics).await;
 }
 
 pub async fn single_statistic(
