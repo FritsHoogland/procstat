@@ -38,7 +38,7 @@ pub async fn read_proc_data() -> ProcData
     let proc_diskstats = diskstats_internal::read();
     let proc_netdev = net_dev_internal::read();
     ProcData {
-        timestamp: timestamp,
+        timestamp,
         stat: proc_stat,
         schedstat: proc_schedstat,
         meminfo: proc_meminfo,

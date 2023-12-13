@@ -8,7 +8,7 @@ pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(S
 {
     cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
     for cpu_stat in &proc_data.stat.cpu_individual {
-        cpu_statistics(&cpu_stat, proc_data.timestamp, statistics).await;
+        cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await;
     }
     single_statistic("stat", "","context_switches", proc_data.timestamp, proc_data.stat.context_switches, statistics).await;
     single_statistic("stat", "", "processes", proc_data.timestamp, proc_data.stat.processes, statistics).await;
