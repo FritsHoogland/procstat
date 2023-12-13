@@ -34,7 +34,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
                     row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
                     row.last_value = cpu_data.$field_name as f64;
                     row.last_timestamp = timestamp;
-                    row.new_value = false;
+                    row.updated_value = true;
                 })
                 .or_insert(
                     Statistic {
@@ -42,7 +42,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
                         last_value: cpu_data.$field_name as f64,
                         delta_value: 0.0,
                         per_second_value: 0.0,
-                        new_value: true,
+                        updated_value: false,
                     }
                 );
             )*
