@@ -19,7 +19,7 @@ pub struct ProcData
     pub net_dev: net_dev_internal::ProcNetDev,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Statistic
 {
     pub last_timestamp: DateTime<Local>,
