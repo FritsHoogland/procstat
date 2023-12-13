@@ -53,7 +53,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
 
 pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
-    if statistics.get(&("stat".to_string(), "cpu".to_string(), "user".to_string())).unwrap_or(&Statistic::default()).new_value { return };
+    if !statistics.get(&("stat".to_string(), "cpu".to_string(), "user".to_string())).unwrap_or(&Statistic::default()).updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().delta_value;
     let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().delta_value;
