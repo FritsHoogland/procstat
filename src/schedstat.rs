@@ -8,17 +8,16 @@ pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashM
     let mut scheduler_total_time_waiting = 0;
     let mut scheduler_total_timeslices = 0;
     for cpu_data in &proc_data.schedstat.cpu {
-        single_statistic("schedstat", format!("cpu{}", cpu_data.iter().nth(0).unwrap()).as_str(), "time_running", proc_data.timestamp, *cpu_data.iter().nth(7).unwrap(), statistics).await;
-        scheduler_total_time_running += cpu_data.iter().nth(7).unwrap();
-        single_statistic("schedstat", format!("cpu{}", cpu_data.iter().nth(0).unwrap()).as_str(), "time_waiting", proc_data.timestamp, *cpu_data.iter().nth(8).unwrap(), statistics).await;
-        scheduler_total_time_waiting += cpu_data.iter().nth(8).unwrap();
-        single_statistic("schedstat", format!("cpu{}", cpu_data.iter().nth(0).unwrap()).as_str(), "timeslices", proc_data.timestamp, *cpu_data.iter().nth(9).unwrap(), statistics).await;
-        scheduler_total_timeslices += cpu_data.iter().nth(9).unwrap();
+        single_statistic("schedstat", format!("cpu{}", cpu_data[0]).as_str(), "time_running", proc_data.timestamp, cpu_data[7], statistics).await;
+        scheduler_total_time_running += cpu_data[7];
+        single_statistic("schedstat", format!("cpu{}", cpu_data[0]).as_str(), "time_waiting", proc_data.timestamp, cpu_data[8], statistics).await;
+        scheduler_total_time_waiting += cpu_data[8];
+        single_statistic("schedstat", format!("cpu{}", cpu_data[0]).as_str(), "timeslices", proc_data.timestamp, cpu_data[9], statistics).await;
+        scheduler_total_timeslices += cpu_data[9];
     }
     single_statistic("schedstat", "all","time_running", proc_data.timestamp, scheduler_total_time_running, statistics).await;
     single_statistic("schedstat", "all","time_waiting", proc_data.timestamp, scheduler_total_time_waiting, statistics).await;
     single_statistic("schedstat", "all","timeslices", proc_data.timestamp, scheduler_total_timeslices, statistics).await;
-    println!("inside");
 }
 
 #[cfg(test)]
