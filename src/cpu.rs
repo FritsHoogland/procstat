@@ -22,12 +22,11 @@ pub async fn cpu_statistics(cpu_data: CpuStat, timestamp: DateTime<Local>, stati
     let cpu_name = match cpu_data.name.as_str()
     {
         "cpu" => "all",
-        cpunr => cpunr.trim_start_matches("cpu"),
+        cpunr => cpunr,
     };
     macro_rules! add_cpu_data_field_to_statistics {
         ($($field_name:ident),*) => {
             $(
-                //statistics.entry(("stat", cpu_data.name.to_string(), "cpu".to_string(), stringify!($field_name).to_string()))
                 statistics.entry(("stat".to_string(), cpu_name.to_string(), stringify!($field_name).to_string()))
                 .and_modify(|row| {
                     row.delta_value = cpu_data.$field_name as f64 - row.last_value;
@@ -82,8 +81,8 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
 {
     let mut cpu_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "stat")
-        .map(|(_, cpu_number, _)| cpu_number)
-        //.filter(|cpu_number| cpu_number.starts_with("cpu") && cpu_number.len() > 3)
+        .map(|(_, cpu_specification, _)| cpu_specification)
+        .filter(|cpu_specification| cpu_specification.starts_with("cpu") || *cpu_specification == "all")
         //.filter(|cpu_number| cpu_number.starts_with("cpu"))
         .collect::<HashSet<&String>>()
         .into_iter()
