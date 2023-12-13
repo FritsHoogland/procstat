@@ -98,7 +98,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String), Statistic>)
         let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
         println!("{:8} {:3} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                  timestamp.format("%H:%M:%S"),
-                 "all",
+                 cpu_name,
                  user/total* 100.,
                  nice/total* 100.,
                  system/total* 100.,
