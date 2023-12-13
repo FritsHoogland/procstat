@@ -160,7 +160,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                          idle / total * 100.,
                 );
             },
-            "mapstat-u-ALL" => {
+            "mpstat-u-ALL" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
