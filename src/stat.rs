@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use chrono::{DateTime, Local};
 use proc_sys_parser::stat::CpuStat;
 use crate::{ProcData, single_statistic, Statistic};
@@ -51,7 +51,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
     add_cpu_data_field_to_statistics!(user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice);
 }
 
-pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
+pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
     if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
@@ -66,8 +66,8 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
     let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().delta_value;
     let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().delta_value;
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value/1000000_f64;
-    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().delta_value/1000000_f64;
+    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value/1_000_000_f64;
+    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().delta_value/1_000_000_f64;
     match output
     {
         "sar-u" => {
@@ -97,7 +97,7 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
                      guest_user/total*100.,
                      guest_nice/total*100.,
             );
-        }
+        },
         "cpu-all" => {
             println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
@@ -115,10 +115,88 @@ pub async fn print_cpu(statistics: &HashMap<(String, String, String), Statistic>
                      scheduler_running,
                      scheduler_waiting,
             );
-        }
+        },
         &_ => todo!{},
     }
-
+}
+pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
+{
+    let mut cpu_list: Vec<_> = statistics.keys()
+        .filter(|(group, _, _)| group == "stat" || group == "schedstat")
+        .map(|(_, cpu_specification, _)| cpu_specification)
+        .filter(|cpu_specification| cpu_specification.starts_with("cpu") || *cpu_specification == "all")
+        .collect::<HashSet<&String>>()
+        .into_iter()
+        .collect();
+    cpu_list.sort();
+    for cpu_name in cpu_list
+    {
+        if !statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().updated_value { return };
+        let timestamp = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().last_timestamp;
+        let user = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().delta_value;
+        let nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "nice".to_string())).unwrap().delta_value;
+        let system = statistics.get(&("stat".to_string(), cpu_name.to_string(), "system".to_string())).unwrap().delta_value;
+        let iowait = statistics.get(&("stat".to_string(), cpu_name.to_string(), "iowait".to_string())).unwrap().delta_value;
+        let steal = statistics.get(&("stat".to_string(), cpu_name.to_string(), "steal".to_string())).unwrap().delta_value;
+        let irq = statistics.get(&("stat".to_string(), cpu_name.to_string(), "irq".to_string())).unwrap().delta_value;
+        let softirq = statistics.get(&("stat".to_string(), cpu_name.to_string(), "softirq".to_string())).unwrap().delta_value;
+        let guest_user = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest".to_string())).unwrap().delta_value;
+        let guest_nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest_nice".to_string())).unwrap().delta_value;
+        let idle = statistics.get(&("stat".to_string(), cpu_name.to_string(), "idle".to_string())).unwrap().delta_value;
+        let total = user + nice + system + iowait + steal + irq + softirq + guest_user + guest_nice + idle;
+        let scheduler_running = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_running".to_string())).unwrap().delta_value / 1_000_000_f64;
+        let scheduler_waiting = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_waiting".to_string())).unwrap().delta_value / 1_000_000_f64;
+        match output
+        {
+            "mpstat-u" => {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         timestamp.format("%H:%M:%S"),
+                         "all",
+                         user / total * 100.,
+                         nice / total * 100.,
+                         system / total * 100.,
+                         iowait / total * 100.,
+                         steal / total * 100.,
+                         idle / total * 100.,
+                );
+            },
+            "mapstat-u-ALL" => {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         timestamp.format("%H:%M:%S"),
+                         "all",
+                         user / total * 100.,
+                         nice / total * 100.,
+                         system / total * 100.,
+                         iowait / total * 100.,
+                         steal / total * 100.,
+                         idle / total * 100.,
+                         irq / total * 100.,
+                         softirq / total * 100.,
+                         guest_user / total * 100.,
+                         guest_nice / total * 100.,
+                );
+            },
+            "percpu-all" => {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         timestamp.format("%H:%M:%S"),
+                         "all",
+                         user,
+                         nice,
+                         system,
+                         iowait,
+                         steal,
+                         idle,
+                         irq,
+                         softirq,
+                         guest_user,
+                         guest_nice,
+                         scheduler_running,
+                         scheduler_waiting,
+                );
+            },
+            &_ => todo! {},
+        }
+    }
 }
 
 /*

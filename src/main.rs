@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use clap::{Parser, ValueEnum};
 
 use procstat::{read_proc_data, process_data, Statistic, stat};
-use stat::print_cpu;
+use stat::{print_all_cpu, print_per_cpu};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions
@@ -13,6 +13,10 @@ enum OutputOptions
     #[clap(name = "sar-u-ALL")]
     SarUAll,
     CpuAll,
+    MpstatU,
+    #[clap(name = "mpstat-u-ALL")]
+    MpstatUAll,
+    PerCpuAll,
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -42,9 +46,12 @@ async fn main()
 
         match args.output
         {
-            OutputOptions::SarU => print_cpu(&statistics, "sar-u").await,
-            OutputOptions::SarUAll => print_cpu(&statistics, "sar-u-ALL").await,
-            OutputOptions::CpuAll => print_cpu(&statistics, "cpu-all").await,
+            OutputOptions::SarU => print_all_cpu(&statistics, "sar-u").await,
+            OutputOptions::SarUAll => print_all_cpu(&statistics, "sar-u-ALL").await,
+            OutputOptions::CpuAll => print_all_cpu(&statistics, "cpu-all").await,
+            OutputOptions::MpstatU => print_per_cpu(&statistics, "mpstat-u").await,
+            OutputOptions::MpstatUAll => print_per_cpu(&statistics, "mpstat-u-ALL").await,
+            OutputOptions::PerCpuAll => print_per_cpu(&statistics, "per-cpu-all").await,
         }
     }
 }
