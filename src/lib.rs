@@ -45,20 +45,21 @@ pub async fn read_proc_data() -> ProcData
     }
 }
 
-pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String), Statistic>)
+pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
     process_stat_data(proc_data, statistics).await;
 }
 
 pub async fn single_statistic(
     category: &str,
+    subcategory: &str,
     name: &str,
     timestamp: DateTime<Local>,
     value: u64,
-    statistics: &mut HashMap<(String, String), Statistic>,
+    statistics: &mut HashMap<(String, String, String), Statistic>,
 )
 {
-    statistics.entry((category.to_string(), name.to_string()))
+    statistics.entry((category.to_string(), subcategory.to_string(), name.to_string()))
         .and_modify(|row| {
             row.delta_value = value as f64 - row.last_value;
             row.per_second_value = row.delta_value / (timestamp.signed_duration_since(row.last_timestamp).num_milliseconds() as f64 / 1000_f64);
@@ -76,5 +77,3 @@ pub async fn single_statistic(
             }
         );
 }
-
-

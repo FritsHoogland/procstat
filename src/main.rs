@@ -9,7 +9,7 @@ use cpu::print_per_cpu;
 async fn main()
 {
     let mut interval = time::interval(Duration::from_millis(500));
-    let mut statistics: HashMap<(String, String), Statistic> = HashMap::new();
+    let mut statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
     loop
     {
         interval.tick().await;
