@@ -52,6 +52,59 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
 
 pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool)
 {
+    if print_header
+    {
+        match output
+        {
+            "sar-u" => {
+                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
+                         "Timestamp",
+                         "cpu",
+                         "%usr",
+                         "%nice",
+                         "%sys",
+                         "%iowait",
+                         "%steal",
+                         "%idle",
+                );
+            },
+            "sar-u-ALL" => {
+                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
+                         "Timestamp",
+                         "cpu",
+                         "%usr",
+                         "%nice",
+                         "%sys",
+                         "%iowait",
+                         "%steal",
+                         "%irq",
+                         "%soft",
+                         "%guest",
+                         "%gnice",
+                         "%idle",
+                );
+            },
+            "cpu-all" => {
+                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
+                         "Timestamp",
+                         "cpu",
+                         "usr_s",
+                         "nice_s",
+                         "sys_s",
+                         "iowait_s",
+                         "steal_s",
+                         "irq_s",
+                         "soft_s",
+                         "guest_s",
+                         "gnice_s",
+                         "idle_s",
+                         "sched_r_s",
+                         "sched_w_s",
+                );
+            },
+            &_ => todo! {},
+        }
+    }
     if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value;
