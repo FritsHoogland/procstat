@@ -123,18 +123,6 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
     match output
     {
         "sar-u" => {
-            if print_header {
-                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
-                         "Timestamp",
-                         "cpu",
-                         "%usr",
-                         "%nice",
-                         "%sys",
-                         "%iowait",
-                         "%steal",
-                         "%idle",
-                );
-            };
             println!("{:8}   {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -147,22 +135,6 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "sar-u-ALL" => {
-            if print_header {
-                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
-                         "Timestamp",
-                         "cpu",
-                         "%usr",
-                         "%nice",
-                         "%sys",
-                         "%iowait",
-                         "%steal",
-                         "%irq",
-                         "%soft",
-                         "%guest",
-                         "%gnice",
-                         "%idle",
-                );
-            };
             println!("{:8}   {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -179,24 +151,6 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "cpu-all" => {
-            if print_header {
-                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
-                         "Timestamp",
-                         "cpu",
-                         "usr_s",
-                         "nice_s",
-                         "sys_s",
-                         "iowait_s",
-                         "steal_s",
-                         "irq_s",
-                         "soft_s",
-                         "guest_s",
-                         "gnice_s",
-                         "idle_s",
-                         "sched_r_s",
-                         "sched_w_s",
-                );
-            };
             println!("{:8}   {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
