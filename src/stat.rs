@@ -166,6 +166,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
 }
 pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
+    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let mut cpu_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "stat" || group == "schedstat")
         .map(|(_, cpu_specification, _)| cpu_specification)
