@@ -14,6 +14,7 @@ pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashM
         scheduler_total_time_waiting += cpu_data[8];
         single_statistic("schedstat", format!("cpu{}", cpu_data[0]).as_str(), "timeslices", proc_data.timestamp, cpu_data[9], statistics).await;
         scheduler_total_timeslices += cpu_data[9];
+        //println!("{:?}",cpu_data);
     }
     single_statistic("schedstat", "all","time_running", proc_data.timestamp, scheduler_total_time_running, statistics).await;
     single_statistic("schedstat", "all","time_waiting", proc_data.timestamp, scheduler_total_time_waiting, statistics).await;
