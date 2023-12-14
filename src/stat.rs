@@ -50,7 +50,7 @@ pub async fn cpu_statistics(cpu_data: &CpuStat, timestamp: DateTime<Local>, stat
     add_cpu_data_field_to_statistics!(user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice);
 }
 
-pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
+pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool)
 {
     if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
@@ -70,6 +70,18 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
     match output
     {
         "sar-u" => {
+            if print_header {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         "Timestamp",
+                         "cpu",
+                         "%usr",
+                         "%nice",
+                         "%sys",
+                         "%iowait",
+                         "%steal",
+                         "%idle",
+                );
+            };
             println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -82,6 +94,22 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "sar-u-ALL" => {
+            if print_header {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         "Timestamp",
+                         "cpu",
+                         "%usr",
+                         "%nice",
+                         "%sys",
+                         "%iowait",
+                         "%steal",
+                         "%irq",
+                         "%soft",
+                         "%guest",
+                         "%gnice",
+                         "%idle",
+                );
+            };
             println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -90,14 +118,32 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                      system/total*100.,
                      iowait/total*100.,
                      steal/total*100.,
-                     idle/total*100.,
                      irq/total*100.,
                      softirq/total*100.,
                      guest_user/total*100.,
                      guest_nice/total*100.,
+                     idle/total*100.,
             );
         },
         "cpu-all" => {
+            if print_header {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         "Timestamp",
+                         "cpu",
+                         "usr_s",
+                         "nice_s",
+                         "sys_s",
+                         "iowait_s",
+                         "steal_s",
+                         "irq_s",
+                         "soft_s",
+                         "guest_s",
+                         "gnice_s",
+                         "idle_s",
+                         "sched_r_s",
+                         "sched_w_s",
+                );
+            };
             println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -106,11 +152,11 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                      system/1000.,
                      iowait/1000.,
                      steal/1000.,
-                     idle/1000.,
                      irq/1000.,
                      softirq/1000.,
                      guest_user/1000.,
                      guest_nice/1000.,
+                     idle/1000.,
                      scheduler_running/1000.,
                      scheduler_waiting/1000.,
             );
@@ -147,19 +193,21 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         let scheduler_waiting = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_waiting".to_string())).unwrap().per_second_value / 10_000_000_f64;
         match output
         {
-            "mpstat-u" => {
-                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                         timestamp.format("%H:%M:%S"),
-                         cpu_name,
-                         user / total * 100.,
-                         nice / total * 100.,
-                         system / total * 100.,
-                         iowait / total * 100.,
-                         steal / total * 100.,
-                         idle / total * 100.,
+            "mpstat-P-ALL" => {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                         "Timestamp",
+                         "cpu",
+                         "%usr",
+                         "%nice",
+                         "%sys",
+                         "%iowait",
+                         "%irq",
+                         "%soft",
+                         "%steal",
+                         "%guest",
+                         "%gnice",
+                         "%idle",
                 );
-            },
-            "mpstat-u-ALL" => {
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
@@ -167,15 +215,31 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                          nice / total * 100.,
                          system / total * 100.,
                          iowait / total * 100.,
-                         steal / total * 100.,
-                         idle / total * 100.,
                          irq / total * 100.,
                          softirq / total * 100.,
+                         steal / total * 100.,
                          guest_user / total * 100.,
                          guest_nice / total * 100.,
+                         idle / total * 100.,
                 );
             },
             "per-cpu-all" => {
+                println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                    "Timestamp",
+                    "cpu",
+                         "usr_s",
+                         "nice_s",
+                         "sys_s",
+                         "iowait_s",
+                         "steal_s",
+                         "irq_s",
+                         "soft_s",
+                         "guest_s",
+                         "gnice_s",
+                         "idle_s",
+                         "sched_r_s",
+                         "sched_w_s",
+                );
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
@@ -183,12 +247,12 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                          nice / 1000.,
                          system / 1000.,
                          iowait / 1000.,
-                         steal / 1000.,
-                         idle / 1000.,
                          irq / 1000.,
                          softirq / 1000.,
+                         steal / 1000.,
                          guest_user / 1000.,
                          guest_nice / 1000.,
+                         idle / 1000.,
                          scheduler_running / 1000.,
                          scheduler_waiting / 1000.,
                 );
