@@ -57,7 +57,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
         match output
         {
             "sar-u" => {
-                println!("{:8}  {:7}   {:>9}{:>9}{:>9}{:>9}{:>9}{:>9}",
+                println!("{:8}  {:7}   {:>11}{:>11}{:>11}{:>11}{:>11}{:>11}",
                          "Timestamp",
                          "cpu",
                          "%usr",
