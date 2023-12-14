@@ -143,8 +143,8 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         let guest_nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "guest_nice".to_string())).unwrap().per_second_value;
         let idle = statistics.get(&("stat".to_string(), cpu_name.to_string(), "idle".to_string())).unwrap().per_second_value;
         let total = user + nice + system + iowait + steal + irq + softirq + guest_user + guest_nice + idle;
-        let scheduler_running = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_running".to_string())).unwrap().per_second_value / 1_000_000_f64;
-        let scheduler_waiting = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_waiting".to_string())).unwrap().per_second_value / 1_000_000_f64;
+        let scheduler_running = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_running".to_string())).unwrap().per_second_value / 10_000_000_f64;
+        let scheduler_waiting = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_waiting".to_string())).unwrap().per_second_value / 10_000_000_f64;
         match output
         {
             "mpstat-u" => {
@@ -179,18 +179,18 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                 println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
-                         user/1000.,
-                         nice/1000.,
-                         system/1000.,
-                         iowait/1000.,
-                         steal/1000.,
-                         idle/1000.,
-                         irq/1000.,
-                         softirq/1000.,
-                         guest_user/1000.,
-                         guest_nice/1000.,
-                         scheduler_running/1000.,
-                         scheduler_waiting/1000.,
+                         user / 1000.,
+                         nice / 1000.,
+                         system / 1000.,
+                         iowait / 1000.,
+                         steal / 1000.,
+                         idle / 1000.,
+                         irq / 1000.,
+                         softirq / 1000.,
+                         guest_user / 1000.,
+                         guest_nice / 1000.,
+                         scheduler_running / 1000.,
+                         scheduler_waiting / 1000.,
                 );
             },
             &_ => todo! {},
