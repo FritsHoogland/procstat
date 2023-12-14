@@ -54,19 +54,19 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
 {
     if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
-    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().delta_value;
-    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().delta_value;
-    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string())).unwrap().delta_value;
-    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string())).unwrap().delta_value;
-    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string())).unwrap().delta_value;
-    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string())).unwrap().delta_value;
-    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string())).unwrap().delta_value;
-    let guest_user = statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string())).unwrap().delta_value;
-    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().delta_value;
-    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().delta_value;
+    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value;
+    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().per_second_value;
+    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string())).unwrap().per_second_value;
+    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string())).unwrap().per_second_value;
+    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string())).unwrap().per_second_value;
+    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string())).unwrap().per_second_value;
+    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string())).unwrap().per_second_value;
+    let guest_user = statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string())).unwrap().per_second_value;
+    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().per_second_value;
+    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().per_second_value;
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().delta_value/1_000_000_f64;
-    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().delta_value/1_000_000_f64;
+    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1_000_000_f64;
+    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1_000_000_f64;
     match output
     {
         "sar-u" => {
@@ -101,18 +101,18 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             println!("{:8} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
-                     user,
-                     nice,
-                     system,
-                     iowait,
-                     steal,
-                     idle,
-                     irq,
-                     softirq,
-                     guest_user,
-                     guest_nice,
-                     scheduler_running,
-                     scheduler_waiting,
+                     user/1000.,
+                     nice/1000.,
+                     system/1000.,
+                     iowait/1000.,
+                     steal/1000.,
+                     idle/1000.,
+                     irq/1000.,
+                     softirq/1000.,
+                     guest_user/1000.,
+                     guest_nice/1000.,
+                     scheduler_running/1000.,
+                     scheduler_waiting/1000.,
             );
         },
         &_ => todo!{},
