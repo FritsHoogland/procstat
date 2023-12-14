@@ -3,7 +3,6 @@ use chrono::{DateTime, Local};
 use proc_sys_parser::stat::CpuStat;
 use crate::{ProcData, single_statistic, Statistic};
 
-
 pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
     cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
