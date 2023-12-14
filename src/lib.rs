@@ -51,7 +51,6 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
 {
     process_stat_data(&proc_data, statistics).await;
     process_schedstat_data(&proc_data, statistics).await;
-    println!("{:?}", &proc_data.schedstat);
 }
 
 pub async fn single_statistic(
