@@ -47,7 +47,7 @@ async fn main()
         let data = read_proc_data().await;
         process_data(data, &mut statistics).await;
 
-        let print_header = output_counter == 0 || args.header_print % output_counter == 0;
+        let print_header = output_counter % args.header_print == 0;
         match args.output
         {
             OutputOptions::SarU => print_all_cpu(&statistics, "sar-u", print_header).await,
