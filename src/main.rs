@@ -3,8 +3,9 @@ use tokio::time;
 use std::collections::HashMap;
 use clap::{Parser, ValueEnum};
 
-use procstat::{read_proc_data, process_data, Statistic, stat};
+use procstat::{read_proc_data, process_data, Statistic, stat, diskstats};
 use stat::{print_all_cpu, print_per_cpu};
+use diskstats::print_diskstats;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions
@@ -16,7 +17,13 @@ enum OutputOptions
     #[clap(name = "mpstat-P-ALL")]
     MpstatPAll,
     PerCpuAll,
+    SarD,
+    Iostat,
+    IostatX,
 }
+/*
+ {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}
+ */
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
 pub struct Opts
@@ -55,6 +62,9 @@ async fn main()
             OutputOptions::CpuAll => print_all_cpu(&statistics, "cpu-all", print_header).await,
             OutputOptions::MpstatPAll => print_per_cpu(&statistics, "mpstat-P-ALL").await,
             OutputOptions::PerCpuAll => print_per_cpu(&statistics, "per-cpu-all").await,
+            OutputOptions::SarD => print_diskstats(&statistics, "sar-d").await,
+            OutputOptions::Iostat => print_diskstats(&statistics, "iostat").await,
+            OutputOptions::IostatX => print_diskstats(&statistics, "iostat-x").await,
         }
         output_counter += 1;
     }

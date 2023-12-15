@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use crate::{ProcData, single_statistic, Statistic};
-//use proc_sys_parser::net_dev::InterfaceStats;
 
 pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {

@@ -22,14 +22,14 @@ pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashM
 
 #[cfg(test)]
 mod tests {
-    use crate::net_dev_internal::InterfaceStats;
-    use crate::net_dev_internal::ProcNetDev;
-    use crate::diskstats_internal::DiskStats;
-    use crate::diskstats_internal::ProcDiskStats;
-    use crate::meminfo_internal::ProcMemInfo;
-    use crate::schedstat_internal::ProcSchedStat;
-    use crate::stat_internal::ProcStat;
-    use crate::stat_internal::CpuStat;
+    use proc_sys_parser::net_dev::InterfaceStats;
+    use proc_sys_parser::net_dev::ProcNetDev;
+    use proc_sys_parser::diskstats::DiskStats;
+    use proc_sys_parser::diskstats::ProcDiskStats;
+    use proc_sys_parser::meminfo::ProcMemInfo;
+    use proc_sys_parser::schedstat::ProcSchedStat;
+    use proc_sys_parser::stat::ProcStat;
+    use proc_sys_parser::stat::CpuStat;
     use chrono::DateTime;
     use super::*;
 
