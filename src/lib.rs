@@ -4,9 +4,11 @@ use std::collections::HashMap;
 
 pub mod stat;
 pub mod schedstat;
+pub mod meminfo;
 
 use stat::process_stat_data;
 use schedstat::process_schedstat_data;
+use meminfo::process_meminfo_data;
 
 #[derive(Debug)]
 pub struct ProcData
@@ -51,6 +53,7 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
 {
     process_stat_data(&proc_data, statistics).await;
     process_schedstat_data(&proc_data, statistics).await;
+    process_meminfo_data(&proc_data, statistics).await;
 }
 
 pub async fn single_statistic(
