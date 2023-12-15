@@ -1,24 +1,27 @@
-use proc_sys_parser::{schedstat as schedstat_internal, stat as stat_internal, meminfo as meminfo_internal, diskstats as diskstats_internal, net_dev as net_dev_internal};
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
 
 pub mod stat;
 pub mod schedstat;
 pub mod meminfo;
+pub mod diskstats;
+pub mod net_dev;
 
 use stat::process_stat_data;
 use schedstat::process_schedstat_data;
 use meminfo::process_meminfo_data;
+use diskstats::process_diskstats_data;
+use net_dev::process_net_dev_data;
 
 #[derive(Debug)]
 pub struct ProcData
 {
     pub timestamp: DateTime<Local>,
-    pub stat: stat_internal::ProcStat,
-    pub schedstat: schedstat_internal::ProcSchedStat,
-    pub meminfo: meminfo_internal::ProcMemInfo,
-    pub diskstats: diskstats_internal::ProcDiskStats,
-    pub net_dev: net_dev_internal::ProcNetDev,
+    pub stat: proc_sys_parser::stat::ProcStat,
+    pub schedstat: proc_sys_parser::schedstat::ProcSchedStat,
+    pub meminfo: proc_sys_parser::meminfo::ProcMemInfo,
+    pub diskstats: proc_sys_parser::diskstats::ProcDiskStats,
+    pub net_dev: proc_sys_parser::net_dev::ProcNetDev,
 }
 
 #[derive(Debug, Default)]
@@ -34,11 +37,11 @@ pub struct Statistic
 pub async fn read_proc_data() -> ProcData
 {
     let timestamp = Local::now();
-    let proc_stat = stat_internal::read();
-    let proc_schedstat = schedstat_internal::read();
-    let proc_meminfo = meminfo_internal::read();
-    let proc_diskstats = diskstats_internal::read();
-    let proc_netdev = net_dev_internal::read();
+    let proc_stat = proc_sys_parser::stat::read();
+    let proc_schedstat = proc_sys_parser::schedstat::read();
+    let proc_meminfo = proc_sys_parser::meminfo::read();
+    let proc_diskstats = proc_sys_parser::diskstats::read();
+    let proc_netdev = proc_sys_parser::net_dev::read();
     ProcData {
         timestamp,
         stat: proc_stat,
@@ -54,6 +57,8 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
     process_stat_data(&proc_data, statistics).await;
     process_schedstat_data(&proc_data, statistics).await;
     process_meminfo_data(&proc_data, statistics).await;
+    process_diskstats_data(&proc_data, statistics).await;
+    process_net_dev_data(&proc_data, statistics).await;
 }
 
 pub async fn single_statistic(
