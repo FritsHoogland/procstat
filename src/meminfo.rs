@@ -47,7 +47,6 @@ pub async fn print_meminfo(
     let timestamp = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string())).unwrap().last_timestamp;
     let memfree = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string())).unwrap().last_value;
     let memavailable = statistics.get(&("meminfo".to_string(), "".to_string(), "memavailable".to_string())).unwrap().last_value;
-    let memused = statistics.get(&("meminfo".to_string(), "".to_string(), "memused".to_string())).unwrap().last_value;
     let memtotal = statistics.get(&("meminfo".to_string(), "".to_string(), "memtotal".to_string())).unwrap().last_value;
     let buffers = statistics.get(&("meminfo".to_string(), "".to_string(), "buffers".to_string())).unwrap().last_value;
     let cached = statistics.get(&("meminfo".to_string(), "".to_string(), "cached".to_string())).unwrap().last_value;
