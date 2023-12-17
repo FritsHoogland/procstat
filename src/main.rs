@@ -21,9 +21,6 @@ enum OutputOptions
     Iostat,
     IostatX,
 }
-/*
- {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}
- */
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
 pub struct Opts

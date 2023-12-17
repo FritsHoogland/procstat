@@ -27,6 +27,8 @@ pub async fn print_diskstats(
         .collect();
     disk_list.sort();
 
+    if !statistics.get(&("diskstats".to_string(), disk_list[0].to_string(), "device_name".to_string())).unwrap().updated_value { return };
+
     for disk_name in disk_list
     {
         let timestamp = statistics.get(&("diskstats".to_string(), disk_name.to_string(), "device_name".to_string())).unwrap().last_timestamp;
