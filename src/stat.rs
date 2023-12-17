@@ -1,7 +1,7 @@
 use std::collections::{HashMap,HashSet};
 use chrono::{DateTime, Local};
 use proc_sys_parser::stat::CpuStat;
-use crate::{ProcData, single_statistic, Statistic};
+use crate::common::{ProcData, single_statistic, Statistic};
 
 pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
@@ -157,7 +157,6 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
 }
 pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
-    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let mut cpu_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "stat" || group == "schedstat")
         .map(|(_, cpu_specification, _)| cpu_specification)
@@ -166,6 +165,9 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         .into_iter()
         .collect();
     cpu_list.sort();
+
+    if !statistics.get(&("stat".to_string(), cpu_list[0].to_string(), "user".to_string())).unwrap().updated_value { return };
+
     match output
     {
         "mpstat-P-ALL" => {
@@ -206,7 +208,6 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
     }
     for cpu_name in cpu_list
     {
-        if !statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().updated_value { return };
         let timestamp = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().last_timestamp;
         let user = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().per_second_value;
         let nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "nice".to_string())).unwrap().per_second_value;

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::{ProcData, single_statistic, Statistic};
+use crate::common::{ProcData, single_statistic, Statistic};
 
 pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {

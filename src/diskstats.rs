@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::{ProcData, single_statistic, Statistic};
+use crate::common::{ProcData, single_statistic, Statistic};
 
 pub async fn process_diskstats_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
@@ -27,11 +27,58 @@ pub async fn print_diskstats(
         .collect();
     disk_list.sort();
 
-    if !statistics.get(&("diskstats".to_string(), disk_list[0].to_string(), "device_name".to_string())).unwrap().updated_value { return };
+    if !statistics.get(&("diskstats".to_string(), disk_list[0].to_string(), "reads_completed_success".to_string())).unwrap().updated_value { return };
+
+    match output
+    {
+        "sar-d" => {
+            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                     "timestamp",
+                     "DEV",
+                     "tps",
+                     "rMB/s",
+                     "wMB/s",
+                     "areq-sz",
+                     "aqu-sz",
+                     "await",
+            );
+        },
+        "iostat" => {
+            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9}",
+                "timestamp",
+                "Device",
+                "tps",
+                "MB_read/s",
+                "MB_wrtn/s",
+                "MB_read",
+                "MB_wrtn",
+            );
+        },
+        "iostat-x" => {
+            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                     "timestamp",
+                     "Device",
+                     "r/s",
+                     "w/s",
+                     "rMB/s",
+                     "wMB/s",
+                     "rrqm/s",
+                     "wrqm/s",
+                     "%rrqm/s",
+                     "%wrqm/s",
+                     "r_await",
+                     "w_await",
+                     "aqu-sz",
+                     "rareq-sz",
+                     "wareq-sz",
+            );
+        },
+        &_ => todo!(),
+    }
 
     for disk_name in disk_list
     {
-        let timestamp = statistics.get(&("diskstats".to_string(), disk_name.to_string(), "device_name".to_string())).unwrap().last_timestamp;
+        let timestamp = statistics.get(&("diskstats".to_string(), disk_name.to_string(), "reads_completed_success".to_string())).unwrap().last_timestamp;
         // reads
         let reads_completed_success = statistics.get(&("diskstats".to_string(), disk_name.to_string(), "reads_completed_success".to_string())).unwrap().per_second_value;
         let reads_merged = statistics.get(&("diskstats".to_string(), disk_name.to_string(), "reads_merged".to_string())).unwrap().per_second_value;

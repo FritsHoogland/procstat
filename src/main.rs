@@ -3,9 +3,12 @@ use tokio::time;
 use std::collections::HashMap;
 use clap::{Parser, ValueEnum};
 
-use procstat::{read_proc_data, process_data, Statistic, stat, diskstats};
+use procstat::common::{read_proc_data, process_data, Statistic};
+use procstat::{stat, diskstats, meminfo, net_dev};
 use stat::{print_all_cpu, print_per_cpu};
 use diskstats::print_diskstats;
+use meminfo::print_meminfo;
+use net_dev::print_net_dev;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions
@@ -20,6 +23,9 @@ enum OutputOptions
     SarD,
     Iostat,
     IostatX,
+    SarR,
+    #[clap(name = "sar-n-DEV")]
+    SarNDev,
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -62,6 +68,8 @@ async fn main()
             OutputOptions::SarD => print_diskstats(&statistics, "sar-d").await,
             OutputOptions::Iostat => print_diskstats(&statistics, "iostat").await,
             OutputOptions::IostatX => print_diskstats(&statistics, "iostat-x").await,
+            OutputOptions::SarR => print_meminfo(&statistics, "sar-r", print_header).await,
+            OutputOptions::SarNDev => print_net_dev(&statistics, "sar-n-DEV").await,
         }
         output_counter += 1;
     }
