@@ -24,9 +24,8 @@ pub async fn print_meminfo(
         match output
         {
             "sar-r" => {
-                println!("{:10}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
                          "Timestamp",
-                         "time",
                          "mbmemfree",
                          "mbavail",
                          "mbmemused",
