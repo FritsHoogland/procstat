@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use crate::common::{ProcData, single_statistic, Statistic};
 
 pub async fn process_diskstats_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
@@ -21,13 +21,12 @@ pub async fn print_diskstats(
     output: &str,
 )
 {
-    let mut disk_list: Vec<_> = statistics.keys()
+    let disk_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "diskstats")
         .map(|(_, disk_name, _)| disk_name)
-        .collect::<HashSet<&String>>()
+        .collect::<BTreeSet<&String>>()
         .into_iter()
         .collect();
-    disk_list.sort();
 
     if !statistics.get(&("diskstats".to_string(), disk_list[0].to_string(), "reads_completed_success".to_string())).unwrap().updated_value { return };
 

@@ -24,8 +24,12 @@ enum OutputOptions
     Iostat,
     IostatX,
     SarR,
+    #[clap(name = "sar-r-ALL")]
+    SarRAll,
     #[clap(name = "sar-n-DEV")]
     SarNDev,
+    #[clap(name = "sar-n-EDEV")]
+    SarNEdev,
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -69,7 +73,9 @@ async fn main()
             OutputOptions::Iostat => print_diskstats(&statistics, "iostat").await,
             OutputOptions::IostatX => print_diskstats(&statistics, "iostat-x").await,
             OutputOptions::SarR => print_meminfo(&statistics, "sar-r", print_header).await,
+            OutputOptions::SarRAll => print_meminfo(&statistics, "sar-r-ALL", print_header).await,
             OutputOptions::SarNDev => print_net_dev(&statistics, "sar-n-DEV").await,
+            OutputOptions::SarNEdev => print_net_dev(&statistics, "sar-n-EDEV").await,
         }
         output_counter += 1;
     }

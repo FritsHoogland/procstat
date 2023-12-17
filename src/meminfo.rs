@@ -39,6 +39,27 @@ pub async fn print_meminfo(
                          "mbdirty",
                 );
             },
+            "sar-r-ALL" => {
+                println!("{:10}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}  {:>9} {:>9} {:>9} {:>9} {:>9}",
+                         "Timestamp",
+                         "mbmemfree",
+                         "mbavail",
+                         "mbmemused",
+                         "%memused",
+                         "mbbuffers",
+                         "mbcached",
+                         "mbcommit",
+                         "%commit",
+                         "mbactive",
+                         "mbinact",
+                         "mbdirty",
+                         "mbanonpg",
+                         "mbslab",
+                         "mbstack",
+                         "mbpgtbl",
+                         "mbvmused",
+                );
+            },
             &_ => todo!(),
         }
     }
@@ -54,6 +75,11 @@ pub async fn print_meminfo(
     let active = statistics.get(&("meminfo".to_string(), "".to_string(), "active".to_string())).unwrap().last_value;
     let inactive = statistics.get(&("meminfo".to_string(), "".to_string(), "inactive".to_string())).unwrap().last_value;
     let dirty = statistics.get(&("meminfo".to_string(), "".to_string(), "dirty".to_string())).unwrap().last_value;
+    let anonpages = statistics.get(&("meminfo".to_string(), "".to_string(), "anonpages".to_string())).unwrap().last_value;
+    let slab = statistics.get(&("meminfo".to_string(), "".to_string(), "slab".to_string())).unwrap().last_value;
+    let kernelstack = statistics.get(&("meminfo".to_string(), "".to_string(), "kernelstack".to_string())).unwrap().last_value;
+    let pagetables = statistics.get(&("meminfo".to_string(), "".to_string(), "pagetables".to_string())).unwrap().last_value;
+    let vmalloctotal = statistics.get(&("meminfo".to_string(), "".to_string(), "vmalloctotal".to_string())).unwrap().last_value;
 
     match output
     {
@@ -71,6 +97,27 @@ pub async fn print_meminfo(
                 active / 1024_f64,
                 inactive / 1024_f64,
                 dirty / 1024_f64,
+            );
+        },
+        "sar-r-ALL" => {
+            println!("{:10}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                     timestamp.format("%H:%M:%S"),
+                     memfree / 1024_f64,
+                     memavailable / 1024_f64,
+                     (memtotal - memfree) / 1024_f64,
+                     (memtotal - memfree) / memtotal * 100_f64,
+                     buffers / 1024_f64,
+                     cached / 1024_f64,
+                     committed_as / 1024_f64,
+                     committed_as / (memtotal + swaptotal) * 100_f64,
+                     active / 1024_f64,
+                     inactive / 1024_f64,
+                     dirty / 1024_f64,
+                     anonpages / 1024_f64,
+                     slab / 1024_f64,
+                     kernelstack / 1024_f64,
+                     pagetables / 1024_f64,
+                     vmalloctotal / 1024_f64,
             );
         },
         &_ => todo!(),

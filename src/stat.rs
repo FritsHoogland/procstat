@@ -1,4 +1,4 @@
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashMap, BTreeSet};
 use chrono::{DateTime, Local};
 use proc_sys_parser::stat::CpuStat;
 use crate::common::{ProcData, single_statistic, Statistic};
@@ -157,14 +157,13 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
 }
 pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
-    let mut cpu_list: Vec<_> = statistics.keys()
+    let cpu_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "stat" || group == "schedstat")
         .map(|(_, cpu_specification, _)| cpu_specification)
         .filter(|cpu_specification| cpu_specification.starts_with("cpu") || *cpu_specification == "all")
-        .collect::<HashSet<&String>>()
+        .collect::<BTreeSet<&String>>()
         .into_iter()
         .collect();
-    cpu_list.sort();
 
     if !statistics.get(&("stat".to_string(), cpu_list[0].to_string(), "user".to_string())).unwrap().updated_value { return };
 
