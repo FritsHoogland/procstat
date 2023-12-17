@@ -62,7 +62,7 @@ pub async fn print_net_dev(
         match output
         {
             "sar-n-DEV" => {
-                println!("{:10} {:7}   {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                     timestamp.format("%H:%M:%S"),
                     device,
                     receive_packets,
