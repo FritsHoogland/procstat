@@ -1,5 +1,5 @@
 use std::collections::{BTreeSet, HashMap};
-use crate::common::{ProcData, single_statistic, Statistic};
+use crate::common::{ProcData, single_statistic_u64, Statistic};
 
 pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
@@ -8,7 +8,7 @@ pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap
         macro_rules! add_net_dev_data_to_statistics {
             ($($field_name:ident),*) => {
                 $(
-                    single_statistic("net_dev", &interface.name, stringify!($field_name), proc_data.timestamp, interface.$field_name, statistics).await;
+                    single_statistic_u64("net_dev", &interface.name, stringify!($field_name), proc_data.timestamp, interface.$field_name, statistics).await;
                 )*
             };
         }
@@ -28,23 +28,23 @@ pub async fn print_net_dev(
         .into_iter()
         .collect();
 
-    if !statistics.get(&("net_dev".to_string(), device_list[0].to_string(), "receive_bytes".to_string())).unwrap().updated_value { return };
+    if !statistics.get(&("net_dev".to_string(), device_list[0].to_string(), "receive_bytes".to_string())).unwrap().updated_value { return; };
 
     match output
     {
         "sar-n-DEV" => {
             println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
-                "Timestamp",
-                "IFACE",
-                "rxpck/s",
-                "txpck/s",
-                "rxMB/s",
-                "txMB/s",
-                "rxcmp/s",
-                "txcmp/s",
-                "rxmcst/s",
+                     "Timestamp",
+                     "IFACE",
+                     "rxpck/s",
+                     "txpck/s",
+                     "rxMB/s",
+                     "txMB/s",
+                     "rxcmp/s",
+                     "txcmp/s",
+                     "rxmcst/s",
             );
-        },
+        }
         "sar-n-EDEV" => {
             println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
                      "Timestamp",
@@ -58,7 +58,7 @@ pub async fn print_net_dev(
                      "rxfifo/s",
                      "txfifo/s",
             );
-        },
+        }
         &_ => todo!(),
     }
 
@@ -85,17 +85,17 @@ pub async fn print_net_dev(
         {
             "sar-n-DEV" => {
                 println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                    timestamp.format("%H:%M:%S"),
-                    device,
-                    receive_packets,
-                    transmit_packets,
-                    receive_bytes / (1024_f64 * 1024_f64),
-                    transmit_bytes / (1024_f64 * 1024_f64),
-                    receive_compressed,
-                    transmit_compressed,
-                    receive_multicast,
+                         timestamp.format("%H:%M:%S"),
+                         device,
+                         receive_packets,
+                         transmit_packets,
+                         receive_bytes / (1024_f64 * 1024_f64),
+                         transmit_bytes / (1024_f64 * 1024_f64),
+                         receive_compressed,
+                         transmit_compressed,
+                         receive_multicast,
                 );
-            },
+            }
             "sar-n-EDEV" => {
                 println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
@@ -109,7 +109,7 @@ pub async fn print_net_dev(
                          receive_fifo,
                          transmit_fifo,
                 );
-            },
+            }
             &_ => todo!(),
         }
     }
