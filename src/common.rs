@@ -1,12 +1,12 @@
+use crate::stat::CpuStat;
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
-use crate::HISTORY;
 
-use crate::stat::process_stat_data;
+use crate::stat::{add_cpu_total_to_history, process_stat_data};
 use crate::schedstat::process_schedstat_data;
-use crate::meminfo::process_meminfo_data;
+use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
 use crate::diskstats::process_diskstats_data;
 use crate::net_dev::process_net_dev_data;
 #[derive(Debug)]
@@ -28,26 +28,12 @@ pub struct Statistic
     pub per_second_value: f64,
     pub updated_value: bool,
 }
-#[derive(Debug)]
-pub struct CpuStat {
-    pub timestamp: DateTime<Local>,
-    pub user: f64,
-    pub nice: f64,
-    pub system: f64,
-    pub idle: f64,
-    pub iowait: f64,
-    pub irq: f64,
-    pub softirq: f64,
-    pub steal: f64,
-    pub guest: f64,
-    pub guest_nice: f64,
-    pub scheduler_running: f64,
-    pub scheduler_waiting: f64,
-}
+
 #[derive(Debug)]
 pub struct HistoricalData
 {
     pub cpu: RwLock<BoundedVecDeque<CpuStat>>,
+    pub memory: RwLock<BoundedVecDeque<MemInfo>>
 }
 
 impl HistoricalData
@@ -55,12 +41,17 @@ impl HistoricalData
     pub fn new(history: usize) -> HistoricalData {
         HistoricalData {
             cpu: RwLock::new(BoundedVecDeque::new(history)),
+            memory: RwLock::new(BoundedVecDeque::new(history)),
         }
     }
 }
 
 pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>)
 {
+    add_cpu_total_to_history(statistics).await;
+    add_memory_to_history(statistics).await;
+
+    /*
     if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value/1000_f64;
@@ -91,6 +82,8 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
         scheduler_running,
         scheduler_waiting,
     });
+
+     */
 }
 
 //static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
