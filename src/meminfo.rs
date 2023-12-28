@@ -7,6 +7,7 @@ use plotters::prelude::{AreaSeries, BLACK, LineSeries, Palette99, RED, ShapeStyl
 use plotters::prelude::full_palette::LIGHTGREEN;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use sysctl::{Ctl, Sysctl};
 
 #[derive(Debug)]
 pub struct MemInfo {
@@ -221,6 +222,7 @@ pub fn create_memory_plot(
     let latest = historical_data_read
         .back()
         .unwrap();
+    let min_free_kbytes: f64 = Ctl::new("vm.min_free_kbytes").unwrap().description().unwrap_or_default().parse::<f64>().unwrap_or_default();
 
     // create the plot
     let backend = BitMapBackend::with_buffer(buffer, (1280,900)).into_drawing_area();
@@ -373,6 +375,12 @@ pub fn create_memory_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memavailable", min_memavailable/1024_f64, max_memavailable/1024_f64, latest.memavailable / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+    // min_free_kbytes / pages_min
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, min_free_kbytes / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+    // pages_low
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/4_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+    // pages_high
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/2_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
     //
     // draw the legend
     contextarea.configure_series_labels()

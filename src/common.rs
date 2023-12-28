@@ -9,6 +9,7 @@ use crate::schedstat::process_schedstat_data;
 use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
 use crate::diskstats::process_diskstats_data;
 use crate::net_dev::process_net_dev_data;
+
 #[derive(Debug)]
 pub struct ProcData
 {
@@ -50,46 +51,7 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
 {
     add_cpu_total_to_history(statistics).await;
     add_memory_to_history(statistics).await;
-
-    /*
-    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
-    let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
-    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value/1000_f64;
-    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().per_second_value/1000_f64;
-    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string())).unwrap().per_second_value/1000_f64;
-    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string())).unwrap().per_second_value/1000_f64;
-    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string())).unwrap().per_second_value/1000_f64;
-    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string())).unwrap().per_second_value/1000_f64;
-    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string())).unwrap().per_second_value/1000_f64;
-    let guest= statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string())).unwrap().per_second_value/1000_f64;
-    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().per_second_value/1000_f64;
-    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().per_second_value/1000_f64;
-    //let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1_000_000_f64/1000_f64;
-    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1_000_000_f64/1000_f64;
-    HISTORY.cpu.write().unwrap().push_back( CpuStat {
-        timestamp,
-        user,
-        nice,
-        system,
-        idle,
-        iowait,
-        irq,
-        softirq,
-        steal,
-        guest,
-        guest_nice,
-        scheduler_running,
-        scheduler_waiting,
-    });
-
-     */
 }
-
-//static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
-//    println!("initializing history");
-//    HistoricalData::new(100)
-//});
 
 pub async fn read_proc_data() -> ProcData
 {
