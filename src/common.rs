@@ -8,7 +8,7 @@ use crate::stat::{add_cpu_total_to_history, process_stat_data};
 use crate::schedstat::process_schedstat_data;
 use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
 use crate::diskstats::{add_blockdevices_to_history, BlockDeviceInfo, process_blockdevice_data};
-use crate::net_dev::process_net_dev_data;
+use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};
 
 #[derive(Debug)]
 pub struct ProcData
@@ -36,6 +36,7 @@ pub struct HistoricalData
     pub cpu: RwLock<BoundedVecDeque<CpuStat>>,
     pub memory: RwLock<BoundedVecDeque<MemInfo>>,
     pub blockdevices: RwLock<BoundedVecDeque<BlockDeviceInfo>>,
+    pub networkdevices: RwLock<BoundedVecDeque<NetworkDeviceInfo>>
 }
 
 impl HistoricalData
@@ -45,6 +46,7 @@ impl HistoricalData
             cpu: RwLock::new(BoundedVecDeque::new(history)),
             memory: RwLock::new(BoundedVecDeque::new(history)),
             blockdevices: RwLock::new(BoundedVecDeque::new(history)),
+            networkdevices: RwLock::new(BoundedVecDeque::new(history)),
         }
     }
 }
@@ -54,6 +56,7 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
     add_cpu_total_to_history(statistics).await;
     add_memory_to_history(statistics).await;
     add_blockdevices_to_history(statistics).await;
+    add_networkdevices_to_history(statistics).await;
 }
 
 pub async fn read_proc_data() -> ProcData
