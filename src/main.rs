@@ -19,7 +19,7 @@ use stat::{print_all_cpu, print_per_cpu};
 use diskstats::print_diskstats;
 use meminfo::print_meminfo;
 use net_dev::print_net_dev;
-use webserver::{root_handler, cpu_handler_html, cpu_handler_generate, memory_handler_html, memory_handler_generate};
+use webserver::{root_handler, cpu_handler_html, cpu_handler_generate, memory_handler_html, memory_handler_generate, blockdevice_handler_html, blockdevice_handler_generate};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -90,6 +90,8 @@ async fn main()
             .route("/cpu_all_plot", get(cpu_handler_generate))
             .route("/memory", get(memory_handler_html))
             .route("/memory_plot", get(memory_handler_generate))
+            .route("/blockdevice/:device_name", get(blockdevice_handler_html))
+            .route("/blockdevice_plot/:device_name", get(blockdevice_handler_generate))
             .route("/", get(root_handler));
         let listener = tokio::net::TcpListener::bind("0.0.0.0:1111").await.unwrap();
         axum::serve(listener, app.into_make_service()).await.unwrap();

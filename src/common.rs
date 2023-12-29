@@ -7,7 +7,7 @@ use std::sync::RwLock;
 use crate::stat::{add_cpu_total_to_history, process_stat_data};
 use crate::schedstat::process_schedstat_data;
 use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
-use crate::diskstats::process_diskstats_data;
+use crate::diskstats::{add_blockdevices_to_history, BlockDeviceInfo, process_blockdevice_data};
 use crate::net_dev::process_net_dev_data;
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct ProcData
     pub stat: proc_sys_parser::stat::ProcStat,
     pub schedstat: proc_sys_parser::schedstat::ProcSchedStat,
     pub meminfo: proc_sys_parser::meminfo::ProcMemInfo,
-    pub diskstats: proc_sys_parser::diskstats::ProcDiskStats,
+    pub blockdevices: proc_sys_parser::block::SysBlock,
     pub net_dev: proc_sys_parser::net_dev::ProcNetDev,
 }
 #[derive(Debug, Default)]
@@ -34,7 +34,8 @@ pub struct Statistic
 pub struct HistoricalData
 {
     pub cpu: RwLock<BoundedVecDeque<CpuStat>>,
-    pub memory: RwLock<BoundedVecDeque<MemInfo>>
+    pub memory: RwLock<BoundedVecDeque<MemInfo>>,
+    pub blockdevices: RwLock<BoundedVecDeque<BlockDeviceInfo>>,
 }
 
 impl HistoricalData
@@ -43,6 +44,7 @@ impl HistoricalData
         HistoricalData {
             cpu: RwLock::new(BoundedVecDeque::new(history)),
             memory: RwLock::new(BoundedVecDeque::new(history)),
+            blockdevices: RwLock::new(BoundedVecDeque::new(history)),
         }
     }
 }
@@ -51,6 +53,7 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
 {
     add_cpu_total_to_history(statistics).await;
     add_memory_to_history(statistics).await;
+    add_blockdevices_to_history(statistics).await;
 }
 
 pub async fn read_proc_data() -> ProcData
@@ -59,14 +62,14 @@ pub async fn read_proc_data() -> ProcData
     let proc_stat = proc_sys_parser::stat::read();
     let proc_schedstat = proc_sys_parser::schedstat::read();
     let proc_meminfo = proc_sys_parser::meminfo::read();
-    let proc_diskstats = proc_sys_parser::diskstats::read();
+    let sys_block_devices = proc_sys_parser::block::read();
     let proc_netdev = proc_sys_parser::net_dev::read();
     ProcData {
         timestamp,
         stat: proc_stat,
         schedstat: proc_schedstat,
         meminfo: proc_meminfo,
-        diskstats: proc_diskstats,
+        blockdevices: sys_block_devices,
         net_dev: proc_netdev,
     }
 }
@@ -76,7 +79,7 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
     process_stat_data(&proc_data, statistics).await;
     process_schedstat_data(&proc_data, statistics).await;
     process_meminfo_data(&proc_data, statistics).await;
-    process_diskstats_data(&proc_data, statistics).await;
+    process_blockdevice_data(&proc_data, statistics).await;
     process_net_dev_data(&proc_data, statistics).await;
 }
 
