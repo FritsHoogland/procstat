@@ -1,11 +1,14 @@
+use plotters::coord::Shift;
 use std::collections::{HashMap, BTreeSet};
 use chrono::{DateTime, Local};
+use plotters::backend::RGBPixel;
 use plotters::chart::SeriesLabelPosition::UpperLeft;
 use plotters::prelude::*;
 use plotters::style::full_palette::{GREEN_A400, GREY, LIGHTBLUE, PURPLE, YELLOW_600};
 use crate::HISTORY;
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, MESH_STYLE_FONT_SIZE, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT};
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
+use crate::loadavg::load_plot;
 
 #[derive(Debug)]
 pub struct CpuStat {
@@ -324,8 +327,26 @@ pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, Stri
     });
 }
 
+pub fn create_cpu_load_plot(
+    buffer: &mut Vec<u8>
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (1280, 900)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((2, 1));
+    cpu_total_plot(&mut multi_backend, 0);
+    load_plot(&mut multi_backend, 1);
+}
 pub fn create_cpu_plot(
     buffer: &mut Vec<u8>
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (1280, 900)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((1, 1));
+    cpu_total_plot(&mut multi_backend, 0);
+}
+fn cpu_total_plot(
+    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    backend_number: usize,
 )
 {
     let historical_data_read = HISTORY.cpu.read().unwrap();
@@ -356,9 +377,8 @@ pub fn create_cpu_plot(
         .unwrap();
 
     // create the plot
-    let backend = BitMapBackend::with_buffer(buffer, (1280,900)).into_drawing_area();
-    backend.fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&backend)
+    multi_backend[backend_number].fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)

@@ -9,6 +9,7 @@ use crate::stat::create_cpu_plot;
 use crate::meminfo::create_memory_plot;
 use crate::diskstats::create_blockdevice_plot;
 use crate::net_dev::create_networkdevice_plot;
+use crate::stat::create_cpu_load_plot;
 use crate::HISTORY;
 
 pub async fn root_handler() -> Html<String>
@@ -49,6 +50,7 @@ pub async fn root_handler() -> Html<String>
     <nav>
      <li><a href="/" target="right">Home</a></li>
      <li><a href="/cpu_all" target="right">CPU total</a></li>
+     <li><a href="/cpu_all_load" target="right">CPU total-load</a></li>
      <li><a href="/memory" target="right">Memory</a></li>
      {html_for_blockdevices}
      {html_for_networkdevices}
@@ -67,10 +69,22 @@ pub async fn cpu_handler_html() -> Html<&'static str>
 {
     r#"<img src="/cpu_all_plot">"#.into()
 }
+pub async fn cpu_load_handler_html() -> Html<&'static str>
+{
+    r#"<img src="/cpu_all_load_plot">"#.into()
+}
 
 pub async fn cpu_handler_generate() -> impl IntoResponse {
     let mut buffer = vec![0; 1280 * 900 * 3];
     create_cpu_plot(&mut buffer);
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let mut cursor = Cursor::new(Vec::new());
+    rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+    cursor.into_inner()
+}
+pub async fn cpu_load_handler_generate() -> impl IntoResponse {
+    let mut buffer = vec![0; 1280 * 900 * 3];
+    create_cpu_load_plot(&mut buffer);
     let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();

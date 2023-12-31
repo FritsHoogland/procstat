@@ -13,6 +13,7 @@ pub mod meminfo;
 pub mod diskstats;
 pub mod net_dev;
 mod webserver;
+mod loadavg;
 
 use common::{read_proc_data, process_data, Statistic, add_to_history, HistoricalData};
 use stat::{print_all_cpu, print_per_cpu};
@@ -22,6 +23,8 @@ use net_dev::print_net_dev;
 use webserver::{root_handler,
                 cpu_handler_html,
                 cpu_handler_generate,
+                cpu_load_handler_html,
+                cpu_load_handler_generate,
                 memory_handler_html,
                 memory_handler_generate,
                 blockdevice_handler_html,
@@ -96,6 +99,8 @@ async fn main()
     let _ = tokio::spawn( async {
         let app = Router::new()
             .route("/cpu_all", get(cpu_handler_html))
+            .route("/cpu_all_load", get(cpu_load_handler_html))
+            .route("/cpu_all_load_plot", get(cpu_load_handler_generate))
             .route("/cpu_all_plot", get(cpu_handler_generate))
             .route("/memory", get(memory_handler_html))
             .route("/memory_plot", get(memory_handler_generate))
