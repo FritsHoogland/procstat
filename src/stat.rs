@@ -9,6 +9,8 @@ use crate::HISTORY;
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, MESH_STYLE_FONT_SIZE, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT};
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::loadavg::load_plot;
+use crate::pressure::pressure_cpu_some_plot;
+use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 
 #[derive(Debug)]
 pub struct CpuStat {
@@ -327,25 +329,35 @@ pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, Stri
     });
 }
 
-pub fn create_cpu_load_plot(
-    buffer: &mut Vec<u8>
+pub fn create_cpu_load_pressure_plot(
+    buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (1280, 900)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((3, 1));
+    cpu_total_plot(&mut multi_backend, 0);
+    load_plot(&mut multi_backend, 1);
+    pressure_cpu_some_plot(&mut multi_backend, 2);
+}
+pub fn create_cpu_load_plot(
+    buffer: &mut [u8]
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     cpu_total_plot(&mut multi_backend, 0);
     load_plot(&mut multi_backend, 1);
 }
 pub fn create_cpu_plot(
-    buffer: &mut Vec<u8>
+    buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (1280, 900)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
     cpu_total_plot(&mut multi_backend, 0);
 }
 fn cpu_total_plot(
-    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 )
 {
@@ -382,7 +394,7 @@ fn cpu_total_plot(
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
-        .caption("Total CPU usage".to_string(), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .caption("Total CPU usage", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
         .build_cartesian_2d(start_time..end_time, low_value..high_value)
         .unwrap();
     contextarea.configure_mesh()
@@ -396,7 +408,7 @@ fn cpu_total_plot(
     // colour picker
     let mut palette99_pick = 1_usize;
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|cpustat| (cpustat.timestamp, cpustat.scheduler_waiting)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|cpustat| (cpustat.timestamp, cpustat.scheduler_waiting)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     // scheduler times

@@ -53,7 +53,7 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
 }
 
 pub fn load_plot(
-    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 )
 {
@@ -110,7 +110,7 @@ pub fn load_plot(
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
-        .caption("Load".to_string(), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .caption("Load", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
         .build_cartesian_2d(start_time..end_time, low_value..high_value_all_load)
         .unwrap();
     contextarea.configure_mesh()
@@ -124,7 +124,7 @@ pub fn load_plot(
     // colour picker
     let mut palette99_pick = 1_usize;
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.load_1)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.load_1)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     // load 1
@@ -132,7 +132,7 @@ pub fn load_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "load 1", low_value_load_1, high_value_load_1, latest.load_1))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-    palette99_pick += 1;
+    palette99_pick += 2; // skip yellow
     // load 5
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|loadavg| (loadavg.timestamp, loadavg.load_5)), Palette99::pick(palette99_pick)))
         .unwrap()

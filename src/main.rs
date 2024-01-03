@@ -14,6 +14,7 @@ pub mod diskstats;
 pub mod net_dev;
 mod webserver;
 mod loadavg;
+mod pressure;
 
 use common::{read_proc_data, process_data, Statistic, add_to_history, HistoricalData};
 use stat::{print_all_cpu, print_per_cpu};
@@ -27,11 +28,16 @@ use webserver::{root_handler,
                 cpu_load_handler_generate,
                 memory_handler_html,
                 memory_handler_generate,
+                memory_psi_handler_html,
+                memory_psi_handler_generate,
                 blockdevice_handler_html,
                 blockdevice_handler_generate,
+                blockdevice_psi_handler_html,
+                blockdevice_psi_handler_generate,
                 networkdevice_handler_html,
                 networkdevice_handler_generate,
 };
+use crate::webserver::{cpu_load_psi_handler_generate, cpu_load_psi_handler_html};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -43,6 +49,8 @@ static MESH_STYLE_FONT_SIZE: i32 = 17;
 static LABELS_STYLE_FONT: &str = "monospace";
 static LABELS_STYLE_FONT_SIZE: i32 = 15;
 
+static GRAPH_BUFFER_WIDTH: u32 = 1800;
+static GRAPH_BUFFER_HEIGHTH: u32 = 1250;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions
 {
@@ -91,21 +99,28 @@ async fn main()
     let args = Opts::parse();
 
     ctrlc::set_handler(move || {
-        println!("{:#?}", HISTORY);
+        //println!("{:#?}", HISTORY);
         process::exit(0);
     }).unwrap();
 
     // spawn the webserver thread
+    #[allow(clippy::let_underscore_future)]
     let _ = tokio::spawn( async {
         let app = Router::new()
             .route("/cpu_all", get(cpu_handler_html))
+            .route("/cpu_all_plot", get(cpu_handler_generate))
             .route("/cpu_all_load", get(cpu_load_handler_html))
             .route("/cpu_all_load_plot", get(cpu_load_handler_generate))
-            .route("/cpu_all_plot", get(cpu_handler_generate))
+            .route("/cpu_all_load_psi", get(cpu_load_psi_handler_html))
+            .route("/cpu_all_load_psi_plot", get(cpu_load_psi_handler_generate))
             .route("/memory", get(memory_handler_html))
             .route("/memory_plot", get(memory_handler_generate))
+            .route("/memory_psi", get(memory_psi_handler_html))
+            .route("/memory_psi_plot", get(memory_psi_handler_generate))
             .route("/blockdevice/:device_name", get(blockdevice_handler_html))
             .route("/blockdevice_plot/:device_name", get(blockdevice_handler_generate))
+            .route("/blockdevice_psi/:device_name", get(blockdevice_psi_handler_html))
+            .route("/blockdevice_psi_plot/:device_name", get(blockdevice_psi_handler_generate))
             .route("/networkdevice/:device_name", get(networkdevice_handler_html))
             .route("/networkdevice_plot/:device_name", get(networkdevice_handler_generate))
             .route("/", get(root_handler));

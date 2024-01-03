@@ -6,11 +6,12 @@ use axum::{response::IntoResponse, response::Html};
 use axum::extract::Path;
 use image::{DynamicImage, ImageOutputFormat};
 use crate::stat::create_cpu_plot;
-use crate::meminfo::create_memory_plot;
-use crate::diskstats::create_blockdevice_plot;
+use crate::meminfo::{create_memory_plot, create_memory_psi_plot};
+use crate::diskstats::{create_blockdevice_plot, create_blockdevice_psi_plot};
 use crate::net_dev::create_networkdevice_plot;
-use crate::stat::create_cpu_load_plot;
+use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
 use crate::HISTORY;
+use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 
 pub async fn root_handler() -> Html<String>
 {
@@ -24,9 +25,14 @@ pub async fn root_handler() -> Html<String>
     }
     let unique_blockdevices: Vec<_> = HISTORY.blockdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
     let mut html_for_blockdevices = String::new();
-    for device in unique_blockdevices
+    for device in &unique_blockdevices
     {
         html_for_blockdevices += format!(r##"<li><a href="/blockdevice/{}" target="right">Blockdevice {}</a></li>"##, device, device).as_str();
+    }
+    let mut html_for_blockdevices_psi = String::new();
+    for device in unique_blockdevices
+    {
+        html_for_blockdevices_psi += format!(r##"<li><a href="/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a></li>"##, device, device).as_str();
     }
     let unique_networkdevices: Vec<_> = HISTORY.networkdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
     let mut html_for_networkdevices = String::new();
@@ -51,8 +57,11 @@ pub async fn root_handler() -> Html<String>
      <li><a href="/" target="right">Home</a></li>
      <li><a href="/cpu_all" target="right">CPU total</a></li>
      <li><a href="/cpu_all_load" target="right">CPU total-load</a></li>
+     <li><a href="/cpu_all_load_psi" target="right">CPU total-load-psi</a></li>
      <li><a href="/memory" target="right">Memory</a></li>
+     <li><a href="/memory_psi" target="right">Memory-psi</a></li>
      {html_for_blockdevices}
+     {html_for_blockdevices_psi}
      {html_for_networkdevices}
     </nav>
    </div>
@@ -73,19 +82,31 @@ pub async fn cpu_load_handler_html() -> Html<&'static str>
 {
     r#"<img src="/cpu_all_load_plot">"#.into()
 }
+pub async fn cpu_load_psi_handler_html() -> Html<&'static str>
+{
+    r#"<img src="/cpu_all_load_psi_plot">"#.into()
+}
 
 pub async fn cpu_handler_generate() -> impl IntoResponse {
-    let mut buffer = vec![0; 1280 * 900 * 3];
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
     create_cpu_plot(&mut buffer);
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()
 }
 pub async fn cpu_load_handler_generate() -> impl IntoResponse {
-    let mut buffer = vec![0; 1280 * 900 * 3];
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
     create_cpu_load_plot(&mut buffer);
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
+    let mut cursor = Cursor::new(Vec::new());
+    rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+    cursor.into_inner()
+}
+pub async fn cpu_load_psi_handler_generate() -> impl IntoResponse {
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
+    create_cpu_load_pressure_plot(&mut buffer);
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()
@@ -97,9 +118,22 @@ pub async fn memory_handler_html() -> Html<&'static str>
 }
 
 pub async fn memory_handler_generate() -> impl IntoResponse {
-    let mut buffer = vec![0; 1280 * 900 * 3];
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
     create_memory_plot(&mut buffer);
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
+    let mut cursor = Cursor::new(Vec::new());
+    rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+    cursor.into_inner()
+}
+pub async fn memory_psi_handler_html() -> Html<&'static str>
+{
+    r#"<img src="/memory_psi_plot">"#.into()
+}
+
+pub async fn memory_psi_handler_generate() -> impl IntoResponse {
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
+    create_memory_psi_plot(&mut buffer);
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()
@@ -108,11 +142,23 @@ pub async fn blockdevice_handler_html(Path(device_name): Path<String>) -> Html<S
 {
     format!(r#"<img src="/blockdevice_plot/{}">"#, device_name).into()
 }
+pub async fn blockdevice_psi_handler_html(Path(device_name): Path<String>) -> Html<String>
+{
+    format!(r#"<img src="/blockdevice_psi_plot/{}">"#, device_name).into()
+}
 
 pub async fn blockdevice_handler_generate(Path(device_name): Path<String>) -> impl IntoResponse {
-    let mut buffer = vec![0; 1280 * 900 * 3];
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
     create_blockdevice_plot(&mut buffer, device_name);
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
+    let mut cursor = Cursor::new(Vec::new());
+    rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
+    cursor.into_inner()
+}
+pub async fn blockdevice_psi_handler_generate(Path(device_name): Path<String>) -> impl IntoResponse {
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
+    create_blockdevice_psi_plot(&mut buffer, device_name);
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()
@@ -124,9 +170,9 @@ pub async fn networkdevice_handler_html(Path(device_name): Path<String>) -> Html
 }
 
 pub async fn networkdevice_handler_generate(Path(device_name): Path<String>) -> impl IntoResponse {
-    let mut buffer = vec![0; 1280 * 900 * 3];
+    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
     create_networkdevice_plot(&mut buffer, device_name);
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(1280, 900, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()

@@ -1262,9 +1262,9 @@ dependencies = [
 
 [[package]]
 name = "proc_sys_parser"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecb30b2f4ce844e9987fd375009db90eb48e64caa7ee8223de14b310f839a219"
+checksum = "36992e1f99687bcdbe8d67690fc8fd1259dd3c30d03d7c1b56c6988017f9114f"
 dependencies = [
  "nix",
  "rand",

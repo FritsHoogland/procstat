@@ -1,13 +1,16 @@
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
-use plotters::backend::BitMapBackend;
+use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::coord::Shift;
 use plotters::prelude::*;
 use plotters::prelude::{AreaSeries, BLACK, LineSeries, Palette99, RED, ShapeStyle, TRANSPARENT, WHITE};
 use plotters::prelude::full_palette::LIGHTGREEN;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use sysctl::{Ctl, Sysctl};
+use crate::pressure::pressure_memory_plot;
 
 #[derive(Debug)]
 pub struct MemInfo {
@@ -199,7 +202,27 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
 
 
 pub fn create_memory_plot(
-    buffer: &mut Vec<u8>
+    buffer: &mut [u8]
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((1, 1));
+    memory_plot(&mut multi_backend, 0);
+}
+
+pub fn create_memory_psi_plot(
+    buffer: &mut [u8]
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((2, 1));
+    memory_plot(&mut multi_backend, 0);
+    pressure_memory_plot(&mut multi_backend, 1);
+}
+
+fn memory_plot(
+    multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
 )
 {
     let historical_data_read = HISTORY.memory.read().unwrap();
@@ -225,13 +248,12 @@ pub fn create_memory_plot(
     let min_free_kbytes: f64 = Ctl::new("vm.min_free_kbytes").unwrap().description().unwrap_or_default().parse::<f64>().unwrap_or_default();
 
     // create the plot
-    let backend = BitMapBackend::with_buffer(buffer, (1280,900)).into_drawing_area();
-    backend.fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&backend)
+    multi_backend[backend_number].fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
-        .caption("Memory".to_string(), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .caption("Memory", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
         .build_cartesian_2d(start_time..end_time, low_value..high_value)
         .unwrap();
     contextarea.configure_mesh()
@@ -246,7 +268,7 @@ pub fn create_memory_plot(
     let mut palette99_pick = 1_usize;
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|meminfo| (meminfo.timestamp, meminfo.memtotal)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|meminfo| (meminfo.timestamp, meminfo.memtotal)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //

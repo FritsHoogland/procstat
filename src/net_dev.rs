@@ -9,6 +9,7 @@ use plotters::prelude::*;
 use plotters::prelude::{AreaSeries, BLACK, GREEN, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 
 #[derive(Debug)]
 pub struct NetworkDeviceInfo {
@@ -57,7 +58,7 @@ pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String,
 
     if !statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string())).unwrap().updated_value { return };
 
-    let mut totals = vec![0_f64; 16];
+    let mut totals = [0_f64; 16];
 
     let timestamp = statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string())).unwrap().last_timestamp;
 
@@ -240,11 +241,11 @@ pub async fn print_net_dev(
 }
 
 pub fn create_networkdevice_plot(
-    buffer: &mut Vec<u8>,
+    buffer: &mut [u8],
     device_name: String,
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (1280, 900)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
     networkdevice_mbit_plot(&mut multi_backend, 0, device_name.clone());
     networkdevice_packet_plot(&mut multi_backend, 1, device_name.clone());
@@ -252,7 +253,7 @@ pub fn create_networkdevice_plot(
 }
 
 fn networkdevice_mbit_plot(
-    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
     device_name: String,
 )
@@ -297,7 +298,7 @@ fn networkdevice_mbit_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1 }))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
@@ -341,7 +342,7 @@ fn networkdevice_mbit_plot(
         .unwrap();
 }
 fn networkdevice_packet_plot(
-    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
     device_name: String,
 )
@@ -386,7 +387,7 @@ fn networkdevice_packet_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1 }))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
@@ -430,7 +431,7 @@ fn networkdevice_packet_plot(
         .unwrap();
 }
 fn networkdevice_error_plot(
-    multi_backend: &mut Vec<DrawingArea<BitMapBackend<RGBPixel>, Shift>>,
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
     device_name: String,
 )
@@ -573,7 +574,7 @@ fn networkdevice_error_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //

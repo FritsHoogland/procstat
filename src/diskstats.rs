@@ -1,14 +1,17 @@
 use std::collections::{BTreeSet, HashMap};
 use chrono::{DateTime, Local};
-use plotters::backend::BitMapBackend;
+use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
 use plotters::prelude::{AreaSeries, BLACK, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
 use plotters::prelude::full_palette::PURPLE;
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
+use crate::pressure::pressure_io_plot;
 
 #[derive(Debug)]
 pub struct BlockDeviceInfo {
@@ -66,7 +69,7 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
 
     if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return };
     
-    let mut totals = vec![0_f64; 17];
+    let mut totals = [0_f64; 17];
 
     let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
 
@@ -303,13 +306,36 @@ pub async fn print_diskstats(
 }
 
 pub fn create_blockdevice_plot(
-    buffer: &mut Vec<u8>,
+    buffer: &mut [u8],
     device_name: String,
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (1280,900)).into_drawing_area();
-    let multi_backend = backend.split_evenly((3,1));
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((3, 1));
+    blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
+    blockdevice_iops_plot(&mut multi_backend, 1, device_name.clone());
+    blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name);
+}
+pub fn create_blockdevice_psi_plot(
+    buffer: &mut [u8],
+    device_name: String,
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((4, 1));
+    blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
+    blockdevice_iops_plot(&mut multi_backend, 1, device_name.clone());
+    blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name);
+    pressure_io_plot(&mut multi_backend, 3);
+}
 
+fn blockdevice_mbps_plot(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+    device_name: String,
+)
+{
+    multi_backend[backend_number].fill(&WHITE).unwrap();
     // MBPS plot
     let historical_data_read = HISTORY.blockdevices.read().unwrap();
     let start_time = historical_data_read
@@ -328,13 +354,12 @@ pub fn create_blockdevice_plot(
     let high_value = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices| (blockdevices.reads_bytes + blockdevices.writes_bytes) / (1024_f64*1024_f64))
+        .map(|blockdevices| (blockdevices.reads_bytes + blockdevices.writes_bytes) / (1024_f64 * 1024_f64))
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
 
     // create the plot
-    multi_backend[0].fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend[0])
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
@@ -351,7 +376,7 @@ pub fn create_blockdevice_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
@@ -384,6 +409,15 @@ pub fn create_blockdevice_plot(
         .position(UpperLeft)
         .draw()
         .unwrap();
+}
+
+fn blockdevice_iops_plot(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+    device_name: String,
+)
+{
+    multi_backend[backend_number].fill(&WHITE).unwrap();
     //
     // IOPS plot
     let historical_data_read = HISTORY.blockdevices.read().unwrap();
@@ -409,7 +443,7 @@ pub fn create_blockdevice_plot(
 
     // create the plot
     multi_backend[1].fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend[1])
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
@@ -426,7 +460,7 @@ pub fn create_blockdevice_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
@@ -469,6 +503,15 @@ pub fn create_blockdevice_plot(
         .position(UpperLeft)
         .draw()
         .unwrap();
+}
+
+fn blockdevice_latency_queuedepth_plot(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+    device_name: String,
+)
+{
+    multi_backend[backend_number].fill(&WHITE).unwrap();
     //
     // read, write and discard latency and queue depth plot
     let historical_data_read = HISTORY.blockdevices.read().unwrap();
@@ -514,7 +557,7 @@ pub fn create_blockdevice_plot(
 
     // create the plot
     multi_backend[2].fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend[2])
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
@@ -537,7 +580,7 @@ pub fn create_blockdevice_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT.into(), filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10}", "", "min", "max"));
     //
