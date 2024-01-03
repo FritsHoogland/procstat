@@ -595,11 +595,11 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if (blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success).is_nan() { 0_f64 } else { blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let latest_writes_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms).is_nan()
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success).is_nan()
     { 0_f64 }
     else
     { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms };
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name)
                                                 .map(|blockdevice| if (blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success) }), RED))
@@ -617,12 +617,12 @@ fn blockdevice_latency_queuedepth_plot(
         .filter(|blockdevice| blockdevice.device_name == device_name)
         .map(|blockdevice| if (blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success).is_nan() { 0_f64 } else { blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let latest_reads_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms /
+    let latest_reads_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success /
         historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms).is_nan()
     { 0_f64 }
     else
     { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms };
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
         .map(|blockdevice| if (blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success) }), GREEN))
@@ -641,11 +641,11 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if (blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success).is_nan() { 0_f64 } else { blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let latest_discard_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms).is_nan()
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success).is_nan()
     { 0_f64 }
     else
     { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms /
-      historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms };
+      historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
         .map(|blockdevice| if (blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success) }), PURPLE))
