@@ -397,6 +397,7 @@ fn memory_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memavailable", min_memavailable/1024_f64, max_memavailable/1024_f64, latest.memavailable / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+    //
     // min_free_kbytes / pages_min
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, min_free_kbytes / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
     // pages_low

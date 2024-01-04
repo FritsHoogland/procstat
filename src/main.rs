@@ -37,6 +37,7 @@ use webserver::{root_handler,
                 networkdevice_handler_html,
                 networkdevice_handler_generate,
 };
+use crate::pressure::print_psi;
 use crate::webserver::{cpu_load_psi_handler_generate, cpu_load_psi_handler_html};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
@@ -71,6 +72,9 @@ enum OutputOptions
     SarNDev,
     #[clap(name = "sar-n-EDEV")]
     SarNEdev,
+    PsiCpu,
+    PsiMem,
+    PsiIo,
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -155,6 +159,9 @@ async fn main()
             OutputOptions::SarRAll => print_meminfo(&statistics, "sar-r-ALL", print_header).await,
             OutputOptions::SarNDev => print_net_dev(&statistics, "sar-n-DEV").await,
             OutputOptions::SarNEdev => print_net_dev(&statistics, "sar-n-EDEV").await,
+            OutputOptions::PsiCpu => print_psi(&statistics, "psi-cpu", print_header).await,
+            OutputOptions::PsiMem => print_psi(&statistics, "psi-mem", print_header).await,
+            OutputOptions::PsiIo => print_psi(&statistics, "psi-io", print_header).await,
         }
         output_counter += 1;
     }

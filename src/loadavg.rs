@@ -1,3 +1,4 @@
+#![allow(unused_assignments)]
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
@@ -52,6 +53,19 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
     });
 }
 
+#[derive(Debug, Default)]
+struct LowValue {
+    pub load_1: f64,
+    pub load_5: f64,
+    pub load_15: f64,
+}
+
+#[derive(Debug, Default)]
+struct HighValue {
+    pub load_1: f64,
+    pub load_5: f64,
+    pub load_15: f64,
+}
 pub fn load_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
@@ -68,38 +82,26 @@ pub fn load_plot(
         .map(|loadavg| loadavg.timestamp)
         .max()
         .unwrap();
-    let low_value: f64 = 0.0;
-    let low_value_load_1 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_1)
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let high_value_load_1 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_1)
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let low_value_load_5 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_5)
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let high_value_load_5 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_5)
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let low_value_load_15 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_15)
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let high_value_load_15 = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.load_15)
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let high_value_all_load = high_value_load_1.max(high_value_load_5).max(high_value_load_15);
+    let mut low_value: LowValue = Default::default();
+    let mut high_value: HighValue = Default::default();
+    macro_rules! read_history_and_set_high_and_low_values {
+        ($($struct_field_name:ident),*) => {
+            $(
+            low_value.$struct_field_name = historical_data_read
+                .iter()
+                .map(|pressure| pressure.$struct_field_name)
+                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
+            high_value.$struct_field_name = historical_data_read
+                .iter()
+                .map(|pressure| pressure.$struct_field_name)
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
+            )*
+        };
+    }
+    read_history_and_set_high_and_low_values!(load_1, load_5, load_15);
+    let high_value_all_load = high_value.load_1.max(high_value.load_5).max(high_value.load_15);
     let latest = historical_data_read
         .back()
         .unwrap();
@@ -111,7 +113,7 @@ pub fn load_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("Load", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, low_value..high_value_all_load)
+        .build_cartesian_2d(start_time..end_time, 0_f64..high_value_all_load)
         .unwrap();
     contextarea.configure_mesh()
         .x_labels(6)
@@ -122,29 +124,23 @@ pub fn load_plot(
         .draw()
         .unwrap();
     // colour picker
-    let mut palette99_pick = 1_usize;
+    let mut palette99_pick = 3_usize;
     // This is a dummy plot for the sole intention to write a header in the legend.
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.load_1)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
-    // load 1
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|loadavg| (loadavg.timestamp, loadavg.load_1)), Palette99::pick(palette99_pick)))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "load 1", low_value_load_1, high_value_load_1, latest.load_1))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-    palette99_pick += 2; // skip yellow
-    // load 5
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|loadavg| (loadavg.timestamp, loadavg.load_5)), Palette99::pick(palette99_pick)))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "load 5", low_value_load_5, high_value_load_5, latest.load_5))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-    palette99_pick += 1;
-    // load 15
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|loadavg| (loadavg.timestamp, loadavg.load_15)), Palette99::pick(palette99_pick)))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "load 15", low_value_load_15, high_value_load_15, latest.load_15))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-    //
+    macro_rules! draw_lineseries {
+        ($($struct_field_name:ident),*) => {
+            $(
+                contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), Palette99::pick(palette99_pick)))
+                    .unwrap()
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", stringify!($struct_field_name), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
+                palette99_pick += 1;
+            )*
+        };
+    }
+    draw_lineseries!(load_1, load_5, load_15);
     // draw the legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
