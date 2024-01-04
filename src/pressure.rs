@@ -521,7 +521,6 @@ pub fn pressure_memory_plot(
         .position(UpperLeft)
         .draw()
         .unwrap();
-    println!("{:#?}", latest);
 }
 
 pub fn pressure_io_plot(
