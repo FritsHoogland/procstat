@@ -76,6 +76,7 @@ pub struct Opts {
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
     output: OutputOptions,
     /// Print header
+    #[arg(short = 'n', long, value_name = "nr", default_value = "30")]
     header_print: u64,
     /// History size
     #[arg(
