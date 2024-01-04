@@ -1,44 +1,35 @@
-use time::Duration;
-use tokio::time;
-use std::collections::HashMap;
-use std::process;
+use axum::{routing::get, Router};
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
-use axum::{Router, routing::get};
+use std::collections::HashMap;
+use std::process;
+use time::Duration;
+use tokio::time;
 
 pub mod common;
-pub mod stat;
-pub mod schedstat;
-pub mod meminfo;
 pub mod diskstats;
-pub mod net_dev;
-mod webserver;
 mod loadavg;
+pub mod meminfo;
+pub mod net_dev;
 mod pressure;
+pub mod schedstat;
+pub mod stat;
+mod webserver;
 
-use common::{read_proc_data, process_data, Statistic, add_to_history, HistoricalData};
-use stat::{print_all_cpu, print_per_cpu};
+use crate::pressure::print_psi;
+use crate::webserver::{cpu_load_psi_handler_generate, cpu_load_psi_handler_html};
+use common::{add_to_history, process_data, read_proc_data, HistoricalData, Statistic};
 use diskstats::print_diskstats;
 use meminfo::print_meminfo;
 use net_dev::print_net_dev;
-use webserver::{root_handler,
-                cpu_handler_html,
-                cpu_handler_generate,
-                cpu_load_handler_html,
-                cpu_load_handler_generate,
-                memory_handler_html,
-                memory_handler_generate,
-                memory_psi_handler_html,
-                memory_psi_handler_generate,
-                blockdevice_handler_html,
-                blockdevice_handler_generate,
-                blockdevice_psi_handler_html,
-                blockdevice_psi_handler_generate,
-                networkdevice_handler_html,
-                networkdevice_handler_generate,
+use stat::{print_all_cpu, print_per_cpu};
+use webserver::{
+    blockdevice_handler_generate, blockdevice_handler_html, blockdevice_psi_handler_generate,
+    blockdevice_psi_handler_html, cpu_handler_generate, cpu_handler_html,
+    cpu_load_handler_generate, cpu_load_handler_html, memory_handler_generate, memory_handler_html,
+    memory_psi_handler_generate, memory_psi_handler_html, networkdevice_handler_generate,
+    networkdevice_handler_html, root_handler,
 };
-use crate::pressure::print_psi;
-use crate::webserver::{cpu_load_psi_handler_generate, cpu_load_psi_handler_html};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -53,8 +44,7 @@ static LABELS_STYLE_FONT_SIZE: i32 = 15;
 static GRAPH_BUFFER_WIDTH: u32 = 1800;
 static GRAPH_BUFFER_HEIGHTH: u32 = 1250;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum OutputOptions
-{
+enum OutputOptions {
     SarU,
     #[clap(name = "sar-u-ALL")]
     SarUAll,
@@ -78,8 +68,7 @@ enum OutputOptions
 }
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
-pub struct Opts
-{
+pub struct Opts {
     /// Interval
     #[arg(short = 'i', long, value_name = "time (s)", default_value = "1")]
     interval: u64,
@@ -87,29 +76,31 @@ pub struct Opts
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
     output: OutputOptions,
     /// Print header
-    #[arg(short = 'n', long, value_name = "nr", default_value = "30")]
     header_print: u64,
     /// History size
-    #[arg(short = 's', long, value_name = "nr statistics", default_value = "10800")]
+    #[arg(
+        short = 's',
+        long,
+        value_name = "nr statistics",
+        default_value = "10800"
+    )]
     history: usize,
 }
-static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
-    HistoricalData::new(Opts::parse().history)
-});
+static HISTORY: Lazy<HistoricalData> = Lazy::new(|| HistoricalData::new(Opts::parse().history));
 
 #[tokio::main]
-async fn main()
-{
+async fn main() {
     let args = Opts::parse();
 
     ctrlc::set_handler(move || {
         //println!("{:#?}", HISTORY);
         process::exit(0);
-    }).unwrap();
+    })
+    .unwrap();
 
     // spawn the webserver thread
     #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn( async {
+    let _ = tokio::spawn(async {
         let app = Router::new()
             .route("/cpu_all", get(cpu_handler_html))
             .route("/cpu_all_plot", get(cpu_handler_generate))
@@ -122,22 +113,38 @@ async fn main()
             .route("/memory_psi", get(memory_psi_handler_html))
             .route("/memory_psi_plot", get(memory_psi_handler_generate))
             .route("/blockdevice/:device_name", get(blockdevice_handler_html))
-            .route("/blockdevice_plot/:device_name", get(blockdevice_handler_generate))
-            .route("/blockdevice_psi/:device_name", get(blockdevice_psi_handler_html))
-            .route("/blockdevice_psi_plot/:device_name", get(blockdevice_psi_handler_generate))
-            .route("/networkdevice/:device_name", get(networkdevice_handler_html))
-            .route("/networkdevice_plot/:device_name", get(networkdevice_handler_generate))
+            .route(
+                "/blockdevice_plot/:device_name",
+                get(blockdevice_handler_generate),
+            )
+            .route(
+                "/blockdevice_psi/:device_name",
+                get(blockdevice_psi_handler_html),
+            )
+            .route(
+                "/blockdevice_psi_plot/:device_name",
+                get(blockdevice_psi_handler_generate),
+            )
+            .route(
+                "/networkdevice/:device_name",
+                get(networkdevice_handler_html),
+            )
+            .route(
+                "/networkdevice_plot/:device_name",
+                get(networkdevice_handler_generate),
+            )
             .route("/", get(root_handler));
         let listener = tokio::net::TcpListener::bind("0.0.0.0:1111").await.unwrap();
-        axum::serve(listener, app.into_make_service()).await.unwrap();
+        axum::serve(listener, app.into_make_service())
+            .await
+            .unwrap();
     });
 
     let mut interval = time::interval(Duration::from_secs(args.interval));
 
     let mut statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
     let mut output_counter = 0_u64;
-    loop
-    {
+    loop {
         interval.tick().await;
 
         let data = read_proc_data().await;
@@ -145,8 +152,7 @@ async fn main()
         add_to_history(&statistics).await;
 
         let print_header = output_counter % args.header_print == 0;
-        match args.output
-        {
+        match args.output {
             OutputOptions::SarU => print_all_cpu(&statistics, "sar-u", print_header).await,
             OutputOptions::SarUAll => print_all_cpu(&statistics, "sar-u-ALL", print_header).await,
             OutputOptions::CpuAll => print_all_cpu(&statistics, "cpu-all", print_header).await,

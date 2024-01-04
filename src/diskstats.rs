@@ -35,6 +35,7 @@ pub struct BlockDeviceInfo {
     pub flush_requests_completed_success: f64,
     pub flush_requests_time_spent_ms: f64,
 }
+
 pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
     for disk in &proc_data.blockdevices.block_devices
@@ -67,13 +68,13 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         .into_iter()
         .collect();
 
-    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return };
-    
+    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return; };
+
     let mut totals = [0_f64; 17];
 
     let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
 
-    for disk_name in disk_list.iter().filter(|disk_name| ! disk_name.starts_with("loop") & ! disk_name.starts_with("sr"))
+    for disk_name in disk_list.iter().filter(|disk_name| !disk_name.starts_with("loop") & !disk_name.starts_with("sr"))
     {
         // reads
         let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value;
@@ -138,25 +139,25 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         });
     }
     HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
-            timestamp,
-            device_name: "TOTAL".to_string(),
-            reads_completed_success: totals[0],
-            reads_merged: totals[1],
-            reads_bytes: totals[2],
-            reads_time_spent_ms: totals[3],
-            writes_completed_success: totals[4],
-            writes_merged: totals[5],
-            writes_bytes: totals[6],
-            writes_time_spent_ms: totals[7],
-            ios_in_progress: totals[8],
-            ios_time_spent_ms: totals[9],
-            ios_weighted_time_spent_ms: totals[10],
-            discards_completed_success: totals[11],
-            discards_merged: totals[12],
-            discards_bytes: totals[13],
-            discards_time_spent_ms: totals[14],
-            flush_requests_completed_success: totals[15],
-            flush_requests_time_spent_ms: totals[16],
+        timestamp,
+        device_name: "TOTAL".to_string(),
+        reads_completed_success: totals[0],
+        reads_merged: totals[1],
+        reads_bytes: totals[2],
+        reads_time_spent_ms: totals[3],
+        writes_completed_success: totals[4],
+        writes_merged: totals[5],
+        writes_bytes: totals[6],
+        writes_time_spent_ms: totals[7],
+        ios_in_progress: totals[8],
+        ios_time_spent_ms: totals[9],
+        ios_weighted_time_spent_ms: totals[10],
+        discards_completed_success: totals[11],
+        discards_merged: totals[12],
+        discards_bytes: totals[13],
+        discards_time_spent_ms: totals[14],
+        flush_requests_completed_success: totals[15],
+        flush_requests_time_spent_ms: totals[16],
     });
 }
 
@@ -172,7 +173,7 @@ pub async fn print_diskstats(
         .into_iter()
         .collect();
 
-    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return };
+    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return; };
 
     match output
     {
@@ -187,18 +188,18 @@ pub async fn print_diskstats(
                      "aqu-sz",
                      "await",
             );
-        },
+        }
         "iostat" => {
             println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9}",
-                "timestamp",
-                "Device",
-                "tps",
-                "MB_read/s",
-                "MB_wrtn/s",
-                "MB_read",
-                "MB_wrtn",
+                     "timestamp",
+                     "Device",
+                     "tps",
+                     "MB_read/s",
+                     "MB_wrtn/s",
+                     "MB_read",
+                     "MB_wrtn",
             );
-        },
+        }
         "iostat-x" => {
             println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
                      "timestamp",
@@ -217,7 +218,7 @@ pub async fn print_diskstats(
                      "rareq-sz",
                      "wareq-sz",
             );
-        },
+        }
         &_ => todo!(),
     }
 
@@ -227,17 +228,17 @@ pub async fn print_diskstats(
         // reads
         let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value;
         let reads_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_merged".to_string())).unwrap().per_second_value;
-        let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value*512_f64; // convert 512 bytes sector reads to bytes
-        let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().delta_value*512_f64; // convert 512 bytes sector reads to bytes
+        let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+        let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
         let reads_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_time_spent_ms".to_string())).unwrap().per_second_value;
         // writes
         let writes_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value;
         let writes_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_merged".to_string())).unwrap().per_second_value;
-        let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value*512_f64; // convert 512 bytes sector reads to bytes
-        let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().delta_value*512_f64; // convert 512 bytes sector reads to bytes
+        let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+        let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
         let writes_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_time_spent_ms".to_string())).unwrap().per_second_value;
         //
-        let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string())).unwrap().per_second_value/1000_f64; // convert milliseconds to seconds
+        let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string())).unwrap().per_second_value / 1000_f64; // convert milliseconds to seconds
 
         let mut total_average_request_size = (reads_bytes + writes_bytes) / (reads_completed_success + writes_completed_success);
         total_average_request_size = if total_average_request_size.is_nan() { 0_f64 } else { total_average_request_size };
@@ -269,7 +270,7 @@ pub async fn print_diskstats(
                          queue_size,
                          total_average_request_time,
                 );
-            },
+            }
             "iostat" => {
                 println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
@@ -280,7 +281,7 @@ pub async fn print_diskstats(
                          reads_bytes_total / (1024_f64 * 1024_f64),
                          writes_bytes_total / (1024_f64 * 1024_f64),
                 );
-            },
+            }
             "iostat-x" => {
                 println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
                          timestamp.format("%H:%M:%S"),
@@ -299,7 +300,7 @@ pub async fn print_diskstats(
                          reads_average_request_size / (1024_f64 * 1024_f64),
                          writes_average_request_size / (1024_f64 * 1024_f64),
                 );
-            },
+            }
             &_ => todo!(),
         }
     }
@@ -316,6 +317,7 @@ pub fn create_blockdevice_plot(
     blockdevice_iops_plot(&mut multi_backend, 1, device_name.clone());
     blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name);
 }
+
 pub fn create_blockdevice_psi_plot(
     buffer: &mut [u8],
     device_name: String,
@@ -356,7 +358,7 @@ fn blockdevice_mbps_plot(
         .map(|blockdevices| ((blockdevices.reads_bytes + blockdevices.writes_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    let latest= historical_data_read
+    let latest = historical_data_read
         .iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
         .last()
@@ -582,19 +584,19 @@ fn blockdevice_latency_queuedepth_plot(
     let high_value_latencies_read = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices|  if (blockdevices.reads_time_spent_ms / blockdevices.reads_completed_success).is_nan() { 0_f64 } else { blockdevices.reads_time_spent_ms / blockdevices.reads_completed_success } )
+        .map(|blockdevices| if (blockdevices.reads_time_spent_ms / blockdevices.reads_completed_success).is_nan() { 0_f64 } else { blockdevices.reads_time_spent_ms / blockdevices.reads_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_latencies_write = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices|  if (blockdevices.writes_time_spent_ms / blockdevices.writes_completed_success).is_nan() { 0_f64 } else { blockdevices.writes_time_spent_ms / blockdevices.writes_completed_success } )
+        .map(|blockdevices| if (blockdevices.writes_time_spent_ms / blockdevices.writes_completed_success).is_nan() { 0_f64 } else { blockdevices.writes_time_spent_ms / blockdevices.writes_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_latencies_discard = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices|  if (blockdevices.discards_time_spent_ms / blockdevices.discards_completed_success).is_nan() { 0_f64 } else { blockdevices.discards_time_spent_ms / blockdevices.discards_completed_success } )
+        .map(|blockdevices| if (blockdevices.discards_time_spent_ms / blockdevices.discards_completed_success).is_nan() { 0_f64 } else { blockdevices.discards_time_spent_ms / blockdevices.discards_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_latencies = high_value_latencies_read.max(high_value_latencies_write).max(high_value_latencies_discard);
@@ -630,7 +632,7 @@ fn blockdevice_latency_queuedepth_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
@@ -650,10 +652,10 @@ fn blockdevice_latency_queuedepth_plot(
         .unwrap();
     let latest_writes_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms /
         historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success).is_nan()
-    { 0_f64 }
-    else
-    { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success };
+    { 0_f64 } else {
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms /
+            historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success
+    };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name)
                                                 .map(|blockdevice| if (blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success) }), RED))
@@ -675,13 +677,13 @@ fn blockdevice_latency_queuedepth_plot(
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let latest_reads_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success /
         historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms).is_nan()
-    { 0_f64 }
-    else
-    { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms /
-        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success };
+    { 0_f64 } else {
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms /
+            historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success
+    };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name)
-        .map(|blockdevice| if (blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success) }), GREEN))
+                                                .filter(|blockdevice| blockdevice.device_name == device_name)
+                                                .map(|blockdevice| if (blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success) }), GREEN))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read latency", min_read_latency, max_read_latency, latest_reads_latency))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
@@ -698,16 +700,39 @@ fn blockdevice_latency_queuedepth_plot(
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let latest_discard_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms /
         historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success).is_nan()
-    { 0_f64 }
-    else
-    { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms /
-      historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success };
+    { 0_f64 } else {
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms /
+            historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success
+    };
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name)
-        .map(|blockdevice| if (blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success) }), PURPLE))
+                                                .filter(|blockdevice| blockdevice.device_name == device_name)
+                                                .map(|blockdevice| if (blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success) }), PURPLE))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "discard latency", min_discard_latency, max_discard_latency, latest_discard_latency))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], PURPLE.filled()));
+    //
+    // flush latency
+    // this is a line graph, so no stacking.
+    let min_flush_latency = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .map(|blockdevice| if (blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success).is_nan() { 0_f64 } else { blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success })
+        .min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let max_flush_latency = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .map(|blockdevice| if (blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success).is_nan() { 0_f64 } else { blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success })
+        .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let latest_flush_latency = if (historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_time_spent_ms /
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_completed_success).is_nan()
+    { 0_f64 } else {
+        historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_time_spent_ms /
+            historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_completed_success
+    };
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
+                                                .filter(|blockdevice| blockdevice.device_name == device_name)
+                                                .map(|blockdevice| if (blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success).is_nan() { (blockdevice.timestamp, 0_f64) } else { (blockdevice.timestamp, blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success) }), BLUE))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "flush latency", min_flush_latency, max_flush_latency, latest_flush_latency))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE.filled()));
     //
     // queue depth
     // this is a line graph, and it is bound to the right-hand y axis!
@@ -721,8 +746,8 @@ fn blockdevice_latency_queuedepth_plot(
         .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let latest_queue_depth = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().ios_weighted_time_spent_ms / 1000_f64;
     contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name)
-        .map(|blockdevice| (blockdevice.timestamp, blockdevice.ios_weighted_time_spent_ms / 1000_f64)), BLACK))
+                                                          .filter(|blockdevice| blockdevice.device_name == device_name)
+                                                          .map(|blockdevice| (blockdevice.timestamp, blockdevice.ios_weighted_time_spent_ms / 1000_f64)), BLACK))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "queue depth", min_queue_depth, max_queue_depth, latest_queue_depth))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
