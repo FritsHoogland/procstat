@@ -10,6 +10,7 @@ use plotters::chart::SeriesLabelPosition::UpperLeft;
 use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
+use plotters::style::full_palette::{BLUE_900, BLUE_500, RED_A400, RED_900, RED_200, BLUE_100};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64, single_statistic_option_u64, single_statistic_option_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 
@@ -387,21 +388,17 @@ pub fn pressure_cpu_some_plot(
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "cpu_some_total", low_value.cpu_some_total, high_value.cpu_some_total, latest.cpu_some_total / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
-    // colour picker
-    let mut palette99_pick = 3_usize;
-
     macro_rules! draw_lineseries_on_secondary_axes {
-        ($($struct_field_name:ident),*) => {
+        ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), Palette99::pick(palette99_pick)))
+                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
                     .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-                palette99_pick += 1;
+                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
-    draw_lineseries_on_secondary_axes!(cpu_some_avg10, cpu_some_avg60, cpu_some_avg300);
+    draw_lineseries_on_secondary_axes!([cpu_some_avg10, BLUE_900], [cpu_some_avg60, BLUE_500], [cpu_some_avg300, BLUE_100]);
 
     // draw the legend
     contextarea.configure_series_labels()
@@ -492,27 +489,24 @@ pub fn pressure_memory_plot(
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_some_total", low_value.memory_some_total, high_value.memory_some_total, latest.memory_some_total / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
-    // colour picker; 3 skips bright yellow that is net easy to see on white.
-    let mut palette99_pick = 3_usize;
     macro_rules! draw_lineseries_on_secondary_axes {
-        ($($struct_field_name:ident),*) => {
+        ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), Palette99::pick(palette99_pick)))
+                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
                     .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-                palette99_pick += 1;
+                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
-    draw_lineseries_on_secondary_axes!(memory_some_avg10, memory_some_avg60, memory_some_avg300);
+    draw_lineseries_on_secondary_axes!([memory_some_avg10, BLUE_900], [memory_some_avg60, BLUE_500], [memory_some_avg300, BLUE_100]);
     // full total
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.memory_full_total / 1_000_000_f64)), 0.0, RED_A100))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_full_total", low_value.memory_full_total, high_value.memory_full_total, latest.memory_full_total / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED_A100.filled()));
 
-    draw_lineseries_on_secondary_axes!(memory_full_avg10, memory_full_avg60, memory_full_avg300);
+    draw_lineseries_on_secondary_axes!([memory_full_avg10, RED_900], [memory_full_avg60, RED_A400], [memory_full_avg300, RED_200]);
     // draw the legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
@@ -594,37 +588,38 @@ pub fn pressure_io_plot(
         .draw()
         .unwrap();
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|pressure| (pressure.timestamp, pressure.io_some_total)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+    contextarea.draw_series(LineSeries::new(historical_data_read
+            .iter()
+            .take(1)
+            .map(|pressure| (pressure.timestamp, pressure.io_some_total)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     // some total
-    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.io_some_total / 1_000_000_f64)), 0.0, BLUE_A100))
+    contextarea.draw_series(AreaSeries::new(historical_data_read
+            .iter()
+            .map(|pressure| (pressure.timestamp, pressure.io_some_total / 1_000_000_f64)), 0.0, BLUE_A100))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_some_total", low_value.io_some_total, high_value.io_some_total, latest.io_some_total / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
-    // colour picker
-    let mut palette99_pick = 3_usize;
-
     macro_rules! draw_lineseries_on_secondary_axes {
-        ($($struct_field_name:ident),*) => {
+        ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), Palette99::pick(palette99_pick)))
+                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
                     .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-                palette99_pick += 1;
+                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
-    draw_lineseries_on_secondary_axes!(io_some_avg10, io_some_avg60, io_some_avg300);
+    draw_lineseries_on_secondary_axes!([io_some_avg10, BLUE_900], [io_some_avg60, BLUE_500], [io_some_avg300, BLUE_100]);
 
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.io_full_total / 1_000_000_f64)), 0.0, RED_A100))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_full_total", low_value.io_full_total, high_value.io_full_total, latest.io_full_total / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED_A100.filled()));
 
-    draw_lineseries_on_secondary_axes!(io_full_avg10, io_full_avg60, io_full_avg300);
+    draw_lineseries_on_secondary_axes!([io_full_avg10, RED_900], [io_full_avg60, RED_A400], [io_full_avg300, RED_200]);
 
     // draw the legend
     contextarea.configure_series_labels()

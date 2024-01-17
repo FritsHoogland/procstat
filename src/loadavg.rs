@@ -8,6 +8,7 @@ use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
+use plotters::style::full_palette::{GREY_A100, GREY_500};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 
@@ -123,24 +124,21 @@ pub fn load_plot(
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
-    // colour picker
-    let mut palette99_pick = 3_usize;
     // This is a dummy plot for the sole intention to write a header in the legend.
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.load_1)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     macro_rules! draw_lineseries {
-        ($($struct_field_name:ident),*) => {
+        ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), Palette99::pick(palette99_pick)))
+                contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", stringify!($struct_field_name), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
-                palette99_pick += 1;
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
-    draw_lineseries!(load_1, load_5, load_15);
+    draw_lineseries!([load_1, BLACK], [load_5, GREY_500], [load_15, GREY_A100]);
     // draw the legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
