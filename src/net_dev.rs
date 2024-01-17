@@ -3,12 +3,12 @@
 use std::collections::{BTreeSet, HashMap};
 use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
-use plotters::chart::{ChartBuilder, LabelAreaPosition};
-use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
-use plotters::prelude::{AreaSeries, BLACK, GREEN, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
+//use plotters::prelude::{AreaSeries, BLACK, GREEN, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
+//
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
@@ -306,47 +306,66 @@ fn networkdevice_mbit_plot(
         .unwrap();
     //
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read
-                                                .iter()
-                                                .take(1)
-                                                .map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
+                                                                .take(1)
+                                                                .map(|blockdevice| (blockdevice.timestamp, blockdevice.transmit_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
-    // transmit mbit
-    // this is a stacked graph, so transmit mibt = transmit mbit + receive mbit
-    let min_transmit_mbit = historical_data_read.iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+    // total mbit
+    let min_total_mbit = historical_data_read.iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_bytes + networkdevice.receive_bytes) > 0_f64)
         .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let max_transmit_mbit = historical_data_read.iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+        .unwrap_or_default();
+    let max_total_mbit= historical_data_read.iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_bytes + networkdevice.receive_bytes) > 0_f64)
         .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read
                                                 .iter()
                                                 .filter(|networkdevice| networkdevice.device_name == device_name)
-                                                .map(|networkdevice| (networkdevice.timestamp, ((networkdevice.transmit_bytes + networkdevice.receive_bytes) / (1024_f64 * 1024_f64)) * 8_f64)), 0.0, RED))
+                                                .map(|networkdevice| (networkdevice.timestamp, ((networkdevice.transmit_bytes + networkdevice.receive_bytes) / (1024_f64 * 1024_f64)) * 8_f64)), BLACK))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_mbit, max_total_mbit, (latest.transmit_bytes + latest.receive_bytes) / (1024_f64 * 1024_f64) * 8_f64))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    
+    // transmit mbit
+    let min_transmit_mbit = historical_data_read.iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_bytes > 0_f64)
+        .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_transmit_mbit = historical_data_read.iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_bytes > 0_f64)
+        .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_bytes > 0_f64)
+                                                .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.transmit_bytes / (1024_f64 * 1024_f64) * 8_f64), 4, RED.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "transmit", min_transmit_mbit, max_transmit_mbit, latest.transmit_bytes / (1024_f64 * 1024_f64) * 8_f64))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+        .legend(move |(x, y)| Circle::new((x , y), 4, RED.filled()));
     //
     // receive mbit
     let min_receive_mbit = historical_data_read.iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
-        .map(|networkdevice| (networkdevice.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_bytes > 0_f64)
+        .map(|networkdevice| (networkdevice.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
     let max_receive_mbit = historical_data_read.iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
-        .map(|networkdevice| (networkdevice.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read
-                                                .iter()
-                                                .filter(|networkdevice| networkdevice.device_name == device_name)
-                                                .map(|networkdevice| (networkdevice.timestamp, (networkdevice.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64)), 0.0, GREEN))
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_bytes > 0_f64)
+        .map(|networkdevice| (networkdevice.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_bytes > 0_f64)
+                                                .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.receive_bytes / (1024_f64 * 1024_f64) * 8_f64), 3, GREEN.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "receive", min_receive_mbit, max_receive_mbit, (latest.receive_bytes / (1024_f64 * 1024_f64)) * 8_f64))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "receive", min_receive_mbit, max_receive_mbit, latest.receive_bytes / (1024_f64 * 1024_f64) * 8_f64))
+        .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
 
     // legend
     contextarea.configure_series_labels()
@@ -370,19 +389,19 @@ fn networkdevice_packet_plot(
         .filter(|networkdevices| networkdevices.device_name == device_name)
         .map(|networkdevices| networkdevices.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .filter(|networkdevices| networkdevices.device_name == device_name)
         .map(|networkdevices| networkdevices.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let high_value_packets = historical_data_read
         .iter()
         .filter(|networkdevices| networkdevices.device_name == device_name)
         .map(|networkdevices| (networkdevices.receive_packets + networkdevices.transmit_packets) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .unwrap_or_default();
     let latest = historical_data_read.iter()
         .filter(|networkdevice| networkdevice.device_name == device_name)
         .last()
@@ -414,48 +433,65 @@ fn networkdevice_packet_plot(
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
-    // transmit packets
-    // this is a stacked graph, so transmit packets = transmit packets + receive packets
-    let min_transmit_packets = historical_data_read
+    // total packets
+    let min_total_packets = historical_data_read
         .iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+        .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_packets + networkdevice.receive_packets) > 0_f64)
         .map(|networkdevice| networkdevice.transmit_packets)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let max_transmit_packets = historical_data_read
+        .unwrap_or_default();
+    let max_total_packets = historical_data_read
         .iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+        .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_packets + networkdevice.receive_packets) > 0_f64)
         .map(|networkdevice| networkdevice.transmit_packets)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read
                                                 .iter()
                                                 .filter(|networkdevice| networkdevice.device_name == device_name)
-                                                .map(|networkdevice| (networkdevice.timestamp, networkdevice.transmit_packets + networkdevice.receive_packets)), 0.0, RED))
+                                                .map(|networkdevice| (networkdevice.timestamp, networkdevice.transmit_packets + networkdevice.receive_packets)), BLACK))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "transmit", min_total_packets, max_total_packets, (latest.transmit_packets + latest.receive_packets)))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // transmit packets
+    let min_transmit_packets = historical_data_read
+        .iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_packets > 0_f64)
+        .map(|networkdevice| networkdevice.transmit_packets)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_transmit_packets = historical_data_read
+        .iter()
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_packets > 0_f64)
+        .map(|networkdevice| networkdevice.transmit_packets)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|networkdevice| networkdevice.device_name == device_name)
+                                                .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.transmit_packets), 4, RED.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "transmit", min_transmit_packets, max_transmit_packets, latest.transmit_packets))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+        .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
 
     // receive packets
     let min_receive_packets = historical_data_read
         .iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_packets > 0_f64)
         .map(|networkdevice| networkdevice.receive_packets)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .unwrap_or_default();
     let max_receive_packets = historical_data_read
         .iter()
-        .filter(|networkdevice| networkdevice.device_name == device_name)
+        .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_packets > 0_f64)
         .map(|networkdevice| networkdevice.receive_packets)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read
-                                                .iter()
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
                                                 .filter(|networkdevice| networkdevice.device_name == device_name)
-                                                .map(|networkdevice| (networkdevice.timestamp, networkdevice.receive_packets)), 0.0, GREEN))
+                                                .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.receive_packets), 3, GREEN.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "receive", min_receive_packets, max_receive_packets, latest.receive_packets))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+        .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
     // legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
@@ -569,13 +605,12 @@ fn networkdevice_error_plot(
     macro_rules! draw_lineseries {
         ($($struct_field_name:ident),*) => {
             $(
-                contextarea.draw_series(LineSeries::new(historical_data_read
-                    .iter()
-                    .filter(|networkdevice| networkdevice.device_name == device_name)
-                    .map(|networkdevice| (networkdevice.timestamp, networkdevice.$struct_field_name)), Palette99::pick(colour_picker)))
+                contextarea.draw_series(historical_data_read.iter()
+                                                            .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.$struct_field_name > 0_f64)
+                                                            .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.$struct_field_name), 4, Palette99::pick(colour_picker).filled())))
                 .unwrap()
                 .label(format!("{:25} {:10.2} {:10.2} {:10.2}", stringify!($struct_field_name), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(colour_picker).filled()));
+                .legend(move |(x, y)| Circle::new((x, y), 4, Palette99::pick(colour_picker).filled()));
 
                 colour_picker += 1;
             )*
