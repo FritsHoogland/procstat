@@ -7,7 +7,7 @@ use axum::extract::Path;
 use image::{DynamicImage, ImageOutputFormat};
 use crate::stat::create_cpu_plot;
 use crate::meminfo::{create_memory_plot, create_memory_psi_plot};
-use crate::diskstats::{create_blockdevice_plot, create_blockdevice_psi_plot};
+use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot};
 use crate::net_dev::create_networkdevice_plot;
 use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
 use crate::HISTORY;

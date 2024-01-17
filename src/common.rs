@@ -7,7 +7,7 @@ use std::sync::RwLock;
 use crate::stat::{add_cpu_total_to_history, process_stat_data};
 use crate::schedstat::process_schedstat_data;
 use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
-use crate::diskstats::{add_blockdevices_to_history, BlockDeviceInfo, process_blockdevice_data};
+use crate::blockdevice::{add_blockdevices_to_history, BlockDeviceInfo, process_blockdevice_data};
 use crate::loadavg::{add_loadavg_to_history, LoadavgInfo, process_loadavg_data};
 use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data};
 use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};

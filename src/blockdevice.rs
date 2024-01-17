@@ -1,13 +1,11 @@
 use std::collections::{BTreeSet, HashMap};
 use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
-use plotters::chart::{ChartBuilder, LabelAreaPosition};
-use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
-use plotters::prelude::*;
-use plotters::prelude::{BLACK, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
-use plotters::prelude::full_palette::PURPLE;
+use plotters::prelude::{*, full_palette::PURPLE};
+
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
@@ -74,6 +72,7 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
 
     let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
 
+    // loop are loopback devices, sr commonly is a readonly device supposedly a cdrom
     for disk_name in disk_list.iter().filter(|disk_name| !disk_name.starts_with("loop") & !disk_name.starts_with("sr"))
     {
         // reads
@@ -138,6 +137,7 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
             flush_requests_time_spent_ms,
         });
     }
+
     HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
         timestamp,
         device_name: "TOTAL".to_string(),
@@ -338,7 +338,6 @@ fn blockdevice_mbps_plot(
 )
 {
     multi_backend[backend_number].fill(&WHITE).unwrap();
-    // MBPS plot
     let historical_data_read = HISTORY.blockdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()

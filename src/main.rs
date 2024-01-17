@@ -1,7 +1,6 @@
 use time::Duration;
 use tokio::time;
-use std::collections::HashMap;
-use std::process;
+use std::{process, collections::HashMap};
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
 use axum::{Router, routing::get};
@@ -10,7 +9,7 @@ mod common;
 mod stat;
 mod schedstat;
 mod meminfo;
-mod diskstats;
+mod blockdevice;
 mod net_dev;
 mod webserver;
 mod loadavg;
@@ -18,14 +17,17 @@ mod pressure;
 
 use common::{read_proc_data, process_data, Statistic, add_to_history, HistoricalData};
 use stat::{print_all_cpu, print_per_cpu};
-use diskstats::print_diskstats;
+use blockdevice::print_diskstats;
 use meminfo::print_meminfo;
 use net_dev::print_net_dev;
+use pressure::print_psi;
 use webserver::{root_handler,
                 cpu_handler_html,
                 cpu_handler_generate,
                 cpu_load_handler_html,
                 cpu_load_handler_generate,
+                cpu_load_psi_handler_generate,
+                cpu_load_psi_handler_html,
                 memory_handler_html,
                 memory_handler_generate,
                 memory_psi_handler_html,
@@ -35,10 +37,7 @@ use webserver::{root_handler,
                 blockdevice_psi_handler_html,
                 blockdevice_psi_handler_generate,
                 networkdevice_handler_html,
-                networkdevice_handler_generate,
-};
-use crate::pressure::print_psi;
-use crate::webserver::{cpu_load_psi_handler_generate, cpu_load_psi_handler_html};
+                networkdevice_handler_generate};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -52,6 +51,7 @@ static LABELS_STYLE_FONT_SIZE: i32 = 15;
 
 static GRAPH_BUFFER_WIDTH: u32 = 1800;
 static GRAPH_BUFFER_HEIGHTH: u32 = 1250;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions
 {
@@ -76,6 +76,7 @@ enum OutputOptions
     PsiMem,
     PsiIo,
 }
+
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
 pub struct Opts
@@ -103,7 +104,6 @@ async fn main()
     let args = Opts::parse();
 
     ctrlc::set_handler(move || {
-        //println!("{:#?}", HISTORY);
         process::exit(0);
     }).unwrap();
 
