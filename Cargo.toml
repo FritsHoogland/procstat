@@ -2,6 +2,8 @@
 name = "procstat"
 version = "0.1.2"
 edition = "2021"
+license = "apache-2.0"
+description = "A utility to extract runtime statistics from a linux system."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
