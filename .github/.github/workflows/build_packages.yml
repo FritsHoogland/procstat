@@ -1,0 +1,144 @@
+name: build_rpm_deb
+
+on:
+  push:
+    paths:
+      - 'Cargo.toml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  recreate_latest_release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: (re)create latest release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+
+  build_intel_rpm:
+    if: true
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container:
+          - centos:7
+          - rockylinux:8
+          - rockylinux:9
+    container:
+      image: ${{ matrix.container }}
+    needs: recreate_latest_release
+    steps:
+   
+    - if: ${{ matrix.container == 'centos:7' }}
+      uses: actions/checkout@v3
+    - if: ${{ matrix.container != 'centos:7' }}
+      uses: actions/checkout@v4
+
+    - name: add operating system packages
+      run: yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
+    
+    - name: install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+     
+    - name: cargo build --release
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+
+    - name: strip executable
+      run: strip -s target/release/dsar
+
+    - if: ${{ matrix.container == 'centos:7' }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-generate-rpm --version 0.11.0 --force
+
+    - if: ${{ matrix.container != 'centos:7' }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-generate-rpm
+
+    - if: ${{ matrix.container == 'centos:7' }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: generate-rpm
+        args: --payload-compress=gzip -s 'release = "el.7"'
+
+    - if: ${{ matrix.container == 'rockylinux:8' }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: generate-rpm
+        args: -s 'release = "el.8"'
+
+    - if: ${{ matrix.container == 'rockylinux:9' }}
+      uses: actions-rs/cargo@v1
+      with:
+        command: generate-rpm
+        args: -s 'release = "el.9"'
+
+    - name: upload rpm to release
+      uses: "AButler/upload-release-assets@v2.0"
+      with:
+        files: 'target/generate-rpm/*'
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        release-tag: "latest"
+
+  build_intel_deb:
+    if: true
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container:
+          - ubuntu:22.04
+    container:
+      image: ${{ matrix.container }}
+    needs: recreate_latest_release
+    steps:
+   
+    - uses: actions/checkout@v4
+
+    - name: add operating system packages
+      run: apt-get update && apt-get install -y curl gcc libssl-dev pkg-config libfreetype6-dev libfontconfig1-dev dpkg-dev
+    
+    - name: install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+     
+    - name: cargo build --release
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+
+    - name: strip executable
+      run: strip -s target/release/dsar
+
+    - uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-deb
+
+    - uses: actions-rs/cargo@v1
+      with:
+        command: deb
+
+    - if: ${{ matrix.container == 'ubuntu:22.04' }}
+      run: FILE=$(ls target/debian/dsar*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
+
+    - name: upload rpm to release
+      uses: "AButler/upload-release-assets@v2.0"
+      with:
+        files: 'target/debian/*'
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        release-tag: "latest"
