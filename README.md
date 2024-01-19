@@ -53,9 +53,13 @@ Currently, `procstat` always starts a webserver on port `1111`. I am considering
 The webserver allows to see graphs of CPU, memory, disk IO and networking.
 Examples:
 
+CPU usage:
 ![CPU](/doc/cpu-load-psi.png)
+Memory usage:
 ![Memory](/doc/memory.png)
+System wide disk IO:
 ![Disk IO](/doc/blockdevices.png)
+System wide network IO:
 ![Network IO](/doc/networkdevices.png)
 
 ## Warning
@@ -63,6 +67,7 @@ This is a preview version. Feedback is appreciated, as well as any issues that a
 
 # Building `procstat`
 Please mind the building steps are validated for linux and MacOS.
+`procstat` requires the linux operating system and access to the `/proc` and `/sys` filesystems to perform its function.
 
 Basic steps:
 - Install the rust suite: see <https://www.rust-lang.org/tools/install>
@@ -72,6 +77,6 @@ Basic steps:
 cd procstat
 cargo build --release
 ```
-The executable can be found at `./target/release/procstat`
+The executable is available at `./target/release/procstat` after compilation (cargo build).
 The executable can also be run using cargo: `cargo run --release`. Please mind any switches must be set *after* adding `--` to the cargo run command.
 
