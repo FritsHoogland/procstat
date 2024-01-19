@@ -315,12 +315,12 @@ fn networkdevice_mbit_plot(
     // total mbit
     let min_total_mbit = historical_data_read.iter()
         .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_bytes + networkdevice.receive_bytes) > 0_f64)
-        .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .map(|networkdevice| ((networkdevice.transmit_bytes + networkdevice.receive_bytes) / (1024_f64 * 1024_f64)) * 8_f64)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_total_mbit= historical_data_read.iter()
         .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_bytes + networkdevice.receive_bytes) > 0_f64)
-        .map(|networkdevice| (networkdevice.transmit_bytes / (1024_f64 * 1024_f64)) * 8_f64)
+        .map(|networkdevice| ((networkdevice.transmit_bytes + networkdevice.receive_bytes) / (1024_f64 * 1024_f64)) * 8_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea.draw_series(LineSeries::new(historical_data_read
@@ -437,13 +437,13 @@ fn networkdevice_packet_plot(
     let min_total_packets = historical_data_read
         .iter()
         .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_packets + networkdevice.receive_packets) > 0_f64)
-        .map(|networkdevice| networkdevice.transmit_packets)
+        .map(|networkdevice| networkdevice.transmit_packets + networkdevice.receive_packets)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_total_packets = historical_data_read
         .iter()
         .filter(|networkdevice| networkdevice.device_name == device_name && (networkdevice.transmit_packets + networkdevice.receive_packets) > 0_f64)
-        .map(|networkdevice| networkdevice.transmit_packets)
+        .map(|networkdevice| networkdevice.transmit_packets + networkdevice.receive_packets)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea.draw_series(LineSeries::new(historical_data_read

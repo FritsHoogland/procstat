@@ -27,6 +27,7 @@ Timestamp  cpu            usr_s    nice_s     sys_s  iowait_s   steal_s     irq_
 10:40:25   all             0.01      0.00      0.01      0.00      0.00      0.00      0.01      0.00      0.00      4.98      0.02      0.00
 10:40:26   all             0.01      0.00      0.01      0.00      0.00      0.00      0.00      0.00      0.00      4.99      0.02      0.00
 ```
+(scroll to the right to see the idle time)
 This is the reason why `procstat` is created.
 
 Current output options:
@@ -53,9 +54,12 @@ The webserver allows to see graphs of CPU, memory, disk IO and networking.
 Examples:
 
 ![CPU](/doc/cpu-load-psi.png)
+![Memory](/doc/memory.png)
+![Disk IO](/doc/blockdevices.png)
+![Network IO](/doc/networkdevices.png)
 
 ## Warning
-This is a preview version. Feedback is appreciated.
+This is a preview version. Feedback is appreciated, as well as any issues that are encountered.
 
 # Building `procstat`
 Please mind the building steps are validated for linux and MacOS.
