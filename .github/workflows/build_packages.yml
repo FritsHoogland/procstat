@@ -54,7 +54,7 @@ jobs:
         args: --release
 
     - name: strip executable
-      run: strip -s target/release/dsar
+      run: strip -s target/release/procstat
 
     - if: ${{ matrix.container == 'centos:7' }}
       uses: actions-rs/cargo@v1
@@ -122,7 +122,7 @@ jobs:
         args: --release
 
     - name: strip executable
-      run: strip -s target/release/dsar
+      run: strip -s target/release/procstat
 
     - uses: actions-rs/cargo@v1
       with:
@@ -134,7 +134,7 @@ jobs:
         command: deb
 
     - if: ${{ matrix.container == 'ubuntu:22.04' }}
-      run: FILE=$(ls target/debian/dsar*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
+      run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
 
     - name: upload rpm to release
       uses: "AButler/upload-release-assets@v2.0"
