@@ -36,8 +36,8 @@ pub struct BlockDeviceInfo {
 
 pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
-    for disk in &proc_data.blockdevices.block_devices
-    {
+    for disk in &proc_data.blockdevices.block_devices {
+
         macro_rules! add_diskstats_data_to_statistics_u64 {
             ($($field_name:ident),*) => {
                 $(
@@ -164,6 +164,7 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
 pub async fn print_diskstats(
     statistics: &HashMap<(String, String, String), Statistic>,
     output: &str,
+    print_header: bool,
 )
 {
     let disk_list: Vec<_> = statistics.keys()
@@ -173,12 +174,28 @@ pub async fn print_diskstats(
         .into_iter()
         .collect();
 
+    // https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/pr_stats.c#L723 
+    // single row output must print the header before the check if the value is updated
+    if output == "sar-b" && print_header {
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
+                     "timestamp",
+                     "",
+                     "tps",
+                     "rtps",
+                     "wtps",
+                     "dtps",
+                     "bread/s",
+                     "bwrtn/s",
+                     "bdscd/s",
+                );
+    }
+
     if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return; };
 
     match output
     {
         "sar-d" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "timestamp",
                      "DEV",
                      "tps",
@@ -190,7 +207,7 @@ pub async fn print_diskstats(
             );
         }
         "iostat" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "timestamp",
                      "Device",
                      "tps",
@@ -201,7 +218,7 @@ pub async fn print_diskstats(
             );
         }
         "iostat-x" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "timestamp",
                      "Device",
                      "r/s",
@@ -219,89 +236,117 @@ pub async fn print_diskstats(
                      "wareq-sz",
             );
         }
+        "sar-b" => {},
         &_ => todo!(),
     }
-
-    for disk_name in disk_list
-    {
-        let timestamp = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
-        // reads
-        let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value;
-        let reads_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_merged".to_string())).unwrap().per_second_value;
-        let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
-        let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
-        let reads_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_time_spent_ms".to_string())).unwrap().per_second_value;
-        // writes
-        let writes_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value;
-        let writes_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_merged".to_string())).unwrap().per_second_value;
-        let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
-        let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
-        let writes_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_time_spent_ms".to_string())).unwrap().per_second_value;
-        //
-        let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string())).unwrap().per_second_value / 1000_f64; // convert milliseconds to seconds
-
-        let mut total_average_request_size = (reads_bytes + writes_bytes) / (reads_completed_success + writes_completed_success);
-        total_average_request_size = if total_average_request_size.is_nan() { 0_f64 } else { total_average_request_size };
-        let mut total_average_request_time = (reads_time_ms + writes_time_ms) / (reads_completed_success + writes_completed_success);
-        total_average_request_time = if total_average_request_time.is_nan() { 0_f64 } else { total_average_request_time };
-        let mut reads_percentage_merged = (reads_merged / (reads_merged + reads_completed_success)) * 100_f64;
-        reads_percentage_merged = if reads_percentage_merged.is_nan() { 0_f64 } else { reads_percentage_merged };
-        let mut writes_percentage_merged = (writes_merged / (writes_merged + writes_completed_success)) * 100_f64;
-        writes_percentage_merged = if writes_percentage_merged.is_nan() { 0_f64 } else { writes_percentage_merged };
-        let mut reads_average_time = reads_time_ms / reads_completed_success;
-        reads_average_time = if reads_average_time.is_nan() { 0_f64 } else { reads_average_time };
-        let mut writes_average_time = writes_time_ms / writes_completed_success;
-        writes_average_time = if writes_average_time.is_nan() { 0_f64 } else { writes_average_time };
-        let mut reads_average_request_size = reads_bytes / reads_completed_success;
-        reads_average_request_size = if reads_average_request_size.is_nan() { 0_f64 } else { reads_average_request_size };
-        let mut writes_average_request_size = writes_bytes / writes_completed_success;
-        writes_average_request_size = if writes_average_request_size.is_nan() { 0_f64 } else { writes_average_request_size };
-
-        match output
+    // https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/tests/12.0.1/rd_stats.c#L711 
+    if output == "sar-b" {
+        let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
+        let mut total_reads_completed_success = 0_f64;
+        for disk_name in &disk_list { total_reads_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value; };
+        let mut total_reads_sectors = 0_f64;
+        for disk_name in &disk_list { total_reads_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value; };
+        let mut total_writes_completed_success = 0_f64;
+        for disk_name in &disk_list { total_writes_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value; };
+        let mut total_writes_sectors = 0_f64;
+        for disk_name in &disk_list { total_writes_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value; };
+        let mut total_discards_completed_success = 0_f64;
+        for disk_name in &disk_list { total_discards_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_completed_success".to_string())).unwrap().per_second_value; };
+        let mut total_discards_sectors = 0_f64;
+        for disk_name in &disk_list { total_discards_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_sectors".to_string())).unwrap().per_second_value; };
+        println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+            timestamp.format("%H:%M:%S"),
+            "",
+            total_reads_completed_success + total_writes_completed_success + total_discards_completed_success,
+            total_reads_completed_success,
+            total_writes_completed_success,
+            total_discards_completed_success,
+            total_reads_sectors,
+            total_writes_sectors,
+            total_discards_sectors,
+        );
+    } else {
+        for disk_name in disk_list
         {
-            "sar-d" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                         timestamp.format("%H:%M:%S"),
-                         disk_name,
-                         reads_completed_success + writes_completed_success,
-                         reads_bytes / (1024_f64 * 1024_f64),
-                         writes_bytes / (1024_f64 * 1024_f64),
-                         total_average_request_size / (1024_f64 * 1024_f64),
-                         queue_size,
-                         total_average_request_time,
-                );
+            let timestamp = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
+            // reads
+            let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value;
+            let reads_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_merged".to_string())).unwrap().per_second_value;
+            let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let reads_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_time_spent_ms".to_string())).unwrap().per_second_value;
+            // writes
+            let writes_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value;
+            let writes_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_merged".to_string())).unwrap().per_second_value;
+            let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let writes_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_time_spent_ms".to_string())).unwrap().per_second_value;
+            //
+            let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string())).unwrap().per_second_value / 1000_f64; // convert milliseconds to seconds
+    
+            let mut total_average_request_size = (reads_bytes + writes_bytes) / (reads_completed_success + writes_completed_success);
+            total_average_request_size = if total_average_request_size.is_nan() { 0_f64 } else { total_average_request_size };
+            let mut total_average_request_time = (reads_time_ms + writes_time_ms) / (reads_completed_success + writes_completed_success);
+            total_average_request_time = if total_average_request_time.is_nan() { 0_f64 } else { total_average_request_time };
+            let mut reads_percentage_merged = (reads_merged / (reads_merged + reads_completed_success)) * 100_f64;
+            reads_percentage_merged = if reads_percentage_merged.is_nan() { 0_f64 } else { reads_percentage_merged };
+            let mut writes_percentage_merged = (writes_merged / (writes_merged + writes_completed_success)) * 100_f64;
+            writes_percentage_merged = if writes_percentage_merged.is_nan() { 0_f64 } else { writes_percentage_merged };
+            let mut reads_average_time = reads_time_ms / reads_completed_success;
+            reads_average_time = if reads_average_time.is_nan() { 0_f64 } else { reads_average_time };
+            let mut writes_average_time = writes_time_ms / writes_completed_success;
+            writes_average_time = if writes_average_time.is_nan() { 0_f64 } else { writes_average_time };
+            let mut reads_average_request_size = reads_bytes / reads_completed_success;
+            reads_average_request_size = if reads_average_request_size.is_nan() { 0_f64 } else { reads_average_request_size };
+            let mut writes_average_request_size = writes_bytes / writes_completed_success;
+            writes_average_request_size = if writes_average_request_size.is_nan() { 0_f64 } else { writes_average_request_size };
+    
+            match output
+            {
+                "sar-d" => {
+                    println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+                             timestamp.format("%H:%M:%S"),
+                             disk_name,
+                             reads_completed_success + writes_completed_success,
+                             reads_bytes / (1024_f64 * 1024_f64),
+                             writes_bytes / (1024_f64 * 1024_f64),
+                             total_average_request_size / (1024_f64 * 1024_f64),
+                             queue_size,
+                             total_average_request_time,
+                    );
+                }
+                "iostat" => {
+                    println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+                             timestamp.format("%H:%M:%S"),
+                             disk_name,
+                             reads_completed_success + writes_completed_success,
+                             reads_bytes / (1024_f64 * 1024_f64),
+                             writes_bytes / (1024_f64 * 1024_f64),
+                             reads_bytes_total / (1024_f64 * 1024_f64),
+                             writes_bytes_total / (1024_f64 * 1024_f64),
+                    );
+                }
+                "iostat-x" => {
+                    println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+                             timestamp.format("%H:%M:%S"),
+                             disk_name,
+                             reads_completed_success,
+                             writes_completed_success,
+                             reads_bytes / (1024_f64 * 1024_f64),
+                             writes_bytes / (1024_f64 * 1024_f64),
+                             reads_merged,
+                             writes_merged,
+                             reads_percentage_merged,
+                             writes_percentage_merged,
+                             reads_average_time,
+                             writes_average_time,
+                             queue_size,
+                             reads_average_request_size / (1024_f64 * 1024_f64),
+                             writes_average_request_size / (1024_f64 * 1024_f64),
+                    );
+                }
+                &_ => todo!(),
             }
-            "iostat" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                         timestamp.format("%H:%M:%S"),
-                         disk_name,
-                         reads_completed_success + writes_completed_success,
-                         reads_bytes / (1024_f64 * 1024_f64),
-                         writes_bytes / (1024_f64 * 1024_f64),
-                         reads_bytes_total / (1024_f64 * 1024_f64),
-                         writes_bytes_total / (1024_f64 * 1024_f64),
-                );
-            }
-            "iostat-x" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                         timestamp.format("%H:%M:%S"),
-                         disk_name,
-                         reads_completed_success,
-                         writes_completed_success,
-                         reads_bytes / (1024_f64 * 1024_f64),
-                         writes_bytes / (1024_f64 * 1024_f64),
-                         reads_merged,
-                         writes_merged,
-                         reads_percentage_merged,
-                         writes_percentage_merged,
-                         reads_average_time,
-                         writes_average_time,
-                         queue_size,
-                         reads_average_request_size / (1024_f64 * 1024_f64),
-                         writes_average_request_size / (1024_f64 * 1024_f64),
-                );
-            }
-            &_ => todo!(),
         }
     }
 }

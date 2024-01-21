@@ -11,6 +11,7 @@ use crate::blockdevice::{add_blockdevices_to_history, BlockDeviceInfo, process_b
 use crate::loadavg::{add_loadavg_to_history, LoadavgInfo, process_loadavg_data};
 use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data};
 use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};
+use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data};
 
 #[derive(Debug)]
 pub struct ProcData
@@ -23,7 +24,9 @@ pub struct ProcData
     pub net_dev: proc_sys_parser::net_dev::ProcNetDev,
     pub loadavg: proc_sys_parser::loadavg::ProcLoadavg,
     pub pressure: proc_sys_parser::pressure::ProcPressure,
+    pub vmstat: proc_sys_parser::vmstat::ProcVmStat,
 }
+
 #[derive(Debug, Default)]
 pub struct Statistic
 {
@@ -43,6 +46,7 @@ pub struct HistoricalData
     pub networkdevices: RwLock<BoundedVecDeque<NetworkDeviceInfo>>,
     pub loadavg: RwLock<BoundedVecDeque<LoadavgInfo>>,
     pub pressure: RwLock<BoundedVecDeque<PressureInfo>>,
+    pub vmstat: RwLock<BoundedVecDeque<VmStatInfo>>,
 }
 
 impl HistoricalData
@@ -55,6 +59,7 @@ impl HistoricalData
             networkdevices: RwLock::new(BoundedVecDeque::new(history)),
             loadavg: RwLock::new(BoundedVecDeque::new(history)),
             pressure: RwLock::new(BoundedVecDeque::new(history)),
+            vmstat: RwLock::new(BoundedVecDeque::new(history)),
         }
     }
 }
@@ -67,6 +72,7 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
     add_networkdevices_to_history(statistics).await;
     add_loadavg_to_history(statistics).await;
     add_pressure_to_history(statistics).await;
+    add_vmstat_to_history(statistics).await;
 }
 
 pub async fn read_proc_data() -> ProcData
@@ -79,6 +85,7 @@ pub async fn read_proc_data() -> ProcData
     let proc_netdev = proc_sys_parser::net_dev::read();
     let proc_loadavg = proc_sys_parser::loadavg::read();
     let proc_pressure = proc_sys_parser::pressure::read();
+    let proc_vmstat = proc_sys_parser::vmstat::read();
     ProcData {
         timestamp,
         stat: proc_stat,
@@ -88,6 +95,7 @@ pub async fn read_proc_data() -> ProcData
         net_dev: proc_netdev,
         loadavg: proc_loadavg,
         pressure: proc_pressure,
+        vmstat: proc_vmstat,
     }
 }
 
@@ -100,6 +108,7 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
     process_net_dev_data(&proc_data, statistics).await;
     process_loadavg_data(&proc_data, statistics).await;
     process_pressure_data(&proc_data, statistics).await;
+    process_vmstat_data(&proc_data, statistics).await;
 }
 
 pub async fn single_statistic_u64(
@@ -211,4 +220,34 @@ pub async fn single_statistic_option_u64(
                 updated_value: false,
             }
         );
+}
+
+#[macro_export]
+macro_rules! add_list_of_u64_data_to_statistics {
+    ($category:expr, $subcategory:expr, $timestamp:expr, $proc:ident, $proc_struct:ident, $statistics:ident, $($field_name:ident),*) => {
+        $(
+            let subcategory = if stringify!($subcategory) == "\"\"" { "" } else  { stringify!($subcategory) };
+            single_statistic_u64(stringify!($category), subcategory , stringify!($field_name), $timestamp, $proc.$proc_struct.$field_name, $statistics).await;
+        )*
+    };
+}
+
+#[macro_export]
+macro_rules! add_list_of_option_u64_data_to_statistics {
+    ($category:expr, $subcategory:expr, $timestamp:expr, $proc:ident, $proc_struct:ident, $statistics:ident, $($field_name:ident),*) => {
+        $(
+            let subcategory = if stringify!($subcategory) == "\"\"" { "" } else  { stringify!($subcategory) };
+            single_statistic_option_u64(stringify!($category), subcategory , stringify!($field_name), $timestamp, $proc.$proc_struct.$field_name, $statistics).await;
+        )*
+    };
+}
+
+#[macro_export]
+macro_rules! add_list_of_f64_data_to_statistics {
+    ($category:expr, $subcategory:expr, $timestamp:expr, $proc:ident, $proc_struct:ident, $statistics:ident, $($field_name:ident),*) => {
+        $(
+            let subcategory = if stringify!($subcategory) == "\"\"" { "" } else  { stringify!($subcategory) };
+            single_statistic_f64(stringify!($category), subcategory, stringify!($field_name), $timestamp, $proc.$proc_struct.$field_name, $statistics).await;
+        )*
+    };
 }

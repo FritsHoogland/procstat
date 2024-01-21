@@ -11,6 +11,7 @@ use plotters::prelude::*;
 use plotters::style::full_palette::{GREY_A100, GREY_500};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::{add_list_of_f64_data_to_statistics, add_list_of_u64_data_to_statistics};
 
 #[derive(Debug)]
 pub struct LoadavgInfo {
@@ -25,12 +26,8 @@ pub struct LoadavgInfo {
 
 pub async fn process_loadavg_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {
-    single_statistic_f64("loadavg", "","load_1", proc_data.timestamp, proc_data.loadavg.load_1, statistics).await;
-    single_statistic_f64("loadavg", "","load_5", proc_data.timestamp, proc_data.loadavg.load_5, statistics).await;
-    single_statistic_f64("loadavg", "","load_15", proc_data.timestamp, proc_data.loadavg.load_15, statistics).await;
-    single_statistic_u64("loadavg", "","current_runnable", proc_data.timestamp, proc_data.loadavg.current_runnable, statistics).await;
-    single_statistic_u64("loadavg", "","total", proc_data.timestamp, proc_data.loadavg.total, statistics).await;
-    single_statistic_u64("loadavg", "","last_pid", proc_data.timestamp, proc_data.loadavg.last_pid, statistics).await;
+    add_list_of_f64_data_to_statistics!(loadavg, "", proc_data.timestamp, proc_data, loadavg, statistics, load_1, load_5, load_15);
+    add_list_of_u64_data_to_statistics!(loadavg, "", proc_data.timestamp, proc_data, loadavg, statistics, current_runnable, total, last_pid);
 }
 
 pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String), Statistic>)
@@ -53,6 +50,8 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
         last_pid,
     });
 }
+
+
 
 #[derive(Debug, Default)]
 struct LowValue {

@@ -14,6 +14,7 @@ mod net_dev;
 mod webserver;
 mod loadavg;
 mod pressure;
+mod vmstat;
 
 use common::{read_proc_data, process_data, Statistic, add_to_history, HistoricalData};
 use stat::{print_all_cpu, print_per_cpu};
@@ -21,6 +22,7 @@ use blockdevice::print_diskstats;
 use meminfo::print_meminfo;
 use net_dev::print_net_dev;
 use pressure::print_psi;
+use vmstat::print_vmstat;
 use webserver::{root_handler,
                 cpu_handler_html,
                 cpu_handler_generate,
@@ -63,6 +65,12 @@ enum OutputOptions
     MpstatPAll,
     PerCpuAll,
     SarD,
+    #[clap(name = "sar-b")]
+    Sarb,
+    #[clap(name = "sar-B")]
+    SarB,
+    #[clap(name = "sar-H")]
+    SarH,
     Iostat,
     IostatX,
     SarR,
@@ -148,13 +156,16 @@ async fn main()
         match args.output
         {
             OutputOptions::SarU => print_all_cpu(&statistics, "sar-u", print_header).await,
+            OutputOptions::SarB => print_vmstat(&statistics, "sar-B", print_header).await,
+            OutputOptions::Sarb => print_diskstats(&statistics, "sar-b", print_header).await,
             OutputOptions::SarUAll => print_all_cpu(&statistics, "sar-u-ALL", print_header).await,
             OutputOptions::CpuAll => print_all_cpu(&statistics, "cpu-all", print_header).await,
             OutputOptions::MpstatPAll => print_per_cpu(&statistics, "mpstat-P-ALL").await,
             OutputOptions::PerCpuAll => print_per_cpu(&statistics, "per-cpu-all").await,
-            OutputOptions::SarD => print_diskstats(&statistics, "sar-d").await,
-            OutputOptions::Iostat => print_diskstats(&statistics, "iostat").await,
-            OutputOptions::IostatX => print_diskstats(&statistics, "iostat-x").await,
+            OutputOptions::SarD => print_diskstats(&statistics, "sar-d", print_header).await,
+            OutputOptions::Iostat => print_diskstats(&statistics, "iostat", print_header).await,
+            OutputOptions::IostatX => print_diskstats(&statistics, "iostat-x", print_header).await,
+            OutputOptions::SarH => print_meminfo(&statistics, "sar-H", print_header).await,
             OutputOptions::SarR => print_meminfo(&statistics, "sar-r", print_header).await,
             OutputOptions::SarRAll => print_meminfo(&statistics, "sar-r-ALL", print_header).await,
             OutputOptions::SarNDev => print_net_dev(&statistics, "sar-n-DEV").await,

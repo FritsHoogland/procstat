@@ -151,6 +151,7 @@ mod tests {
                 InterfaceStats { name: "eth0".to_string(), receive_bytes: 13351708, receive_packets: 3311, receive_errors: 0, receive_drop: 0, receive_fifo: 0, receive_frame: 0, receive_compressed: 0, receive_multicast: 0, transmit_bytes: 227904, transmit_packets: 2477, transmit_errors: 0, transmit_drop: 0, transmit_fifo: 0, transmit_collisions: 0, transmit_carrier: 0, transmit_compressed: 0 }] },
             loadavg: Default::default(),
             pressure: Default::default(),
+            vmstat: Default::default(),
         };
         let mut statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
         process_schedstat_data(&proc_data, &mut statistics).await;

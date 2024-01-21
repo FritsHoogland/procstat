@@ -67,6 +67,7 @@ pub async fn process_cpu_statistics(cpu_data: &proc_sys_parser::stat::CpuStat, t
     add_cpu_data_field_to_statistics_option_u64!(iowait, irq, softirq, steal, guest, guest_nice);
 }
 
+// sar cpu statistics: https://github.com/sysstat/sysstat/blob/dbc0b6a59fea1437025208aa12a612181c804fb4/rd_stats.c#L76
 pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool)
 {
     if print_header
@@ -74,7 +75,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
         match output
         {
             "sar-u" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "cpu",
                          "%usr",
@@ -86,7 +87,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                 );
             },
             "sar-u-ALL" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "cpu",
                          "%usr",
@@ -102,7 +103,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                 );
             },
             "cpu-all" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "cpu",
                          "usr_s",
@@ -140,7 +141,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
     match output
     {
         "sar-u" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
                      user/total*100_f64,
@@ -152,7 +153,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "sar-u-ALL" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
                      user/total*100_f64,
@@ -168,7 +169,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "cpu-all" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
                      user/1000_f64,
@@ -203,7 +204,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
     match output
     {
         "mpstat-P-ALL" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "Timestamp",
                      "cpu",
                      "%usr",
@@ -219,7 +220,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "per-cpu-all" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "Timestamp",
                      "cpu",
                      "usr_s",
@@ -257,7 +258,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         match output
         {
             "mpstat-P-ALL" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
                          user / total * 100_f64,
@@ -273,7 +274,7 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                 );
             },
             "per-cpu-all" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                          timestamp.format("%H:%M:%S"),
                          cpu_name,
                          user / 1000_f64,

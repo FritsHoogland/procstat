@@ -9,6 +9,7 @@ use plotters::prelude::full_palette::LIGHTGREEN;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
+use crate::add_list_of_u64_data_to_statistics;
 use sysctl::{Ctl, Sysctl};
 use crate::pressure::pressure_memory_plot;
 
@@ -34,16 +35,8 @@ pub struct MemInfo {
     pub hugepagesize: f64,
 }
 
-pub async fn process_meminfo_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
-    macro_rules! add_meminfo_data_to_statistics {
-        ($($field_name:ident),*) => {
-            $(
-                single_statistic_u64("meminfo", "", stringify!($field_name), proc_data.timestamp, proc_data.meminfo.$field_name, statistics).await;
-            )*
-        };
-    }
-    add_meminfo_data_to_statistics!(memtotal, memfree, memavailable, buffers, cached, swapcached, active, inactive, active_anon, inactive_anon, active_file, inactive_file, unevictable, mlocked, swaptotal, swapfree, zswap, zswapped, dirty, writeback, anonpages, mapped, shmem, kreclaimable, slab, sreclaimable, sunreclaim, kernelstack, shadowcallstack, pagetables, secpagetables, nfs_unstable, bounce, writebacktmp, commitlimit, committed_as, vmalloctotal, vmallocused, vmallocchunk, percpu, hardwarecorrupted, anonhugepages, shmemhugepages, shmempmdmapped, filehugepages, filepmdmapped, cmatotal, cmafree, hugepages_total, hugepages_free, hugepages_rsvd, hugepages_surp, hugepagesize, hugetlb);
+pub async fn process_meminfo_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
+    add_list_of_u64_data_to_statistics!(meminfo, "", proc_data.timestamp, proc_data, meminfo, statistics, memtotal, memfree, memavailable, buffers, cached, swapcached, active, inactive, active_anon, inactive_anon, active_file, inactive_file, unevictable, mlocked, swaptotal, swapfree, zswap, zswapped, dirty, writeback, anonpages, mapped, shmem, kreclaimable, slab, sreclaimable, sunreclaim, kernelstack, shadowcallstack, pagetables, secpagetables, nfs_unstable, bounce, writebacktmp, commitlimit, committed_as, vmalloctotal, vmallocused, vmallocchunk, percpu, hardwarecorrupted, anonhugepages, shmemhugepages, shmempmdmapped, filehugepages, filepmdmapped, cmatotal, cmafree, hugepages_total, hugepages_free, hugepages_rsvd, hugepages_surp, hugepagesize, hugetlb);
 }
 
 pub async fn print_meminfo(
@@ -52,12 +45,10 @@ pub async fn print_meminfo(
     print_header: bool
 )
 {
-    if print_header
-    {
-        match output
-        {
+    if print_header {
+        match output {
             "sar-r" => {
-                println!("{:10}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "mbmemfree",
                          "mbavail",
@@ -73,7 +64,7 @@ pub async fn print_meminfo(
                 );
             },
             "sar-r-ALL" => {
-                println!("{:10}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+                println!("{:10}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "mbmemfree",
                          "mbavail",
@@ -91,6 +82,16 @@ pub async fn print_meminfo(
                          "mbstack",
                          "mbpgtbl",
                          "mbvmused",
+                );
+            },
+            "sar-H" => {
+                println!("{:10}    {:>10} {:>10} {:>10} {:>10} {:>10}",
+                    "Timestamp",
+                    "mbhugfree",
+                    "mbhugused",
+                    "%hugused",
+                    "mbhugrsvd",
+                    "mbhugsurp",
                 );
             },
             &_ => todo!(),
@@ -113,11 +114,15 @@ pub async fn print_meminfo(
     let kernelstack = statistics.get(&("meminfo".to_string(), "".to_string(), "kernelstack".to_string())).unwrap().last_value;
     let pagetables = statistics.get(&("meminfo".to_string(), "".to_string(), "pagetables".to_string())).unwrap().last_value;
     let vmalloctotal = statistics.get(&("meminfo".to_string(), "".to_string(), "vmalloctotal".to_string())).unwrap().last_value;
+    let hugepages_total = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_total".to_string())).unwrap().last_value;
+    let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string())).unwrap().last_value;
+    let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string())).unwrap().last_value;
+    let hugepages_reserved = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_rsvd".to_string())).unwrap().last_value;
+    let hugepages_surplus = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_surp".to_string())).unwrap().last_value;
 
-    match output
-    {
+    match output {
         "sar-r" => {
-            println!("{:10}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            println!("{:10}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                 timestamp.format("%H:%M:%S"),
                 memfree / 1024_f64,
                 memavailable / 1024_f64,
@@ -133,7 +138,7 @@ pub async fn print_meminfo(
             );
         },
         "sar-r-ALL" => {
-            println!("{:10}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            println!("{:10}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      memfree / 1024_f64,
                      memavailable / 1024_f64,
@@ -151,6 +156,16 @@ pub async fn print_meminfo(
                      kernelstack / 1024_f64,
                      pagetables / 1024_f64,
                      vmalloctotal / 1024_f64,
+            );
+        },
+        "sar-H" => {
+            println!("{:10}    {:10.0} {:10.0} {:10.2} {:10.0} {:10.0}",
+                timestamp.format("%H:%M:%S"),
+                (hugepages_free * hugepagesize ) / (1024_f64 * 1024_f64),
+                ((hugepages_total - hugepages_free) * hugepagesize ) / (1024_f64 * 1024_f64),
+                if hugepages_total == 0_f64 { 0_f64 } else { (hugepages_total - hugepages_free) / hugepages_total * 100_f64 },
+                (hugepages_reserved * hugepagesize ) / (1024_f64 * 1024_f64),
+                (hugepages_surplus * hugepagesize ) / (1024_f64 * 1024_f64),
             );
         },
         &_ => todo!(),
