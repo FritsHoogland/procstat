@@ -31,18 +31,21 @@ Timestamp  cpu            usr_s    nice_s     sys_s  iowait_s   steal_s     irq_
 This is the reason why `procstat` is created.
 
 Current output options:
-- sar-u (default)
-- sar-u-ALL 
-- cpu-all (custom option showing CPU time instead of percentages)
-- mpstat-P-ALL
-- per-cpu-all (custom option showing CPU time instead of percentages per CPU)
-- sar-d
 - iostat
 - iostat-x 
-- sar-r
-- sar-r-ALL
+- sar-b
+- sar-B
+- sar-d
+- sar-H
 - sar-n-DEV
 - sar-n-EDEV
+- sar-r
+- sar-r-ALL
+- sar-u (default)
+- sar-u-ALL 
+- mpstat-P-ALL
+- cpu-all (custom option showing CPU time instead of percentages)
+- per-cpu-all (custom option showing CPU time instead of percentages per CPU)
 - psi-cpu (custom option showing cpu pressure stall information)
 - psi-mem (custom option showing memory pressure stall information)
 - psi-io (custom option showing io pressure stall information)
