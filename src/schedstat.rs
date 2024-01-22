@@ -63,7 +63,7 @@ mod tests {
                     vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] },
-            meminfo: ProcMemInfo { memtotal: 3997876, memfree: 2372092, memavailable: 3651296, buffers: 42532, cached: 1337228, swapcached: 0, active: 696380, inactive: 768204, active_anon: 84664, inactive_anon: 5200, active_file: 611716, inactive_file: 763004, unevictable: 4000, mlocked: 0, swaptotal: 0, swapfree: 0, zswap: 0, zswapped: 0, dirty: 32172, writeback: 0, anonpages: 88940, mapped: 137120, shmem: 5016, kreclaimable: 64240, slab: 102188, sreclaimable: 64240, sunreclaim: 37948, kernelstack: 3328, shadowcallstack: 856, pagetables: 2744, secpagetables: 0, nfs_unstable: 0, bounce: 0, writebacktmp: 0, commitlimit: 1998936, committed_as: 1123336, vmalloctotal: 133141626880, vmallocused: 14260, vmallocchunk: 0, percpu: 2256, hardwarecorrupted: 0, anonhugepages: 6144, shmemhugepages: 0, shmempmdmapped: 0, filehugepages: 0, filepmdmapped: 0, cmatotal: 32768, cmafree: 31232, hugepages_total: 0, hugepages_free: 0, hugepages_rsvd: 0, hugepages_surp: 0, hugepagesize: 2048, hugetlb: 0 },
+            meminfo: ProcMemInfo { memtotal: 3997876, memfree: 2372092, memavailable: 3651296, buffers: 42532, cached: 1337228, swapcached: 0, active: 696380, inactive: 768204, active_anon: 84664, inactive_anon: 5200, active_file: 611716, inactive_file: 763004, unevictable: 4000, mlocked: 0, swaptotal: 0, swapfree: 0, zswap: 0, zswapped: 0, dirty: 32172, writeback: 0, anonpages: 88940, mapped: 137120, shmem: 5016, kreclaimable: 64240, slab: 102188, sreclaimable: 64240, sunreclaim: 37948, kernelstack: 3328, shadowcallstack: 856, pagetables: 2744, secpagetables: 0, nfs_unstable: 0, bounce: 0, writebacktmp: 0, commitlimit: 1998936, committed_as: 1123336, vmalloctotal: 133141626880, vmallocused: 14260, vmallocchunk: 0, percpu: 2256, hardwarecorrupted: 0, anonhugepages: 6144, shmemhugepages: 0, shmempmdmapped: 0, filehugepages: 0, filepmdmapped: 0, cmatotal: 32768, cmafree: 31232, hugepages_total: 0, hugepages_free: 0, hugepages_rsvd: 0, hugepages_surp: 0, hugepagesize: 2048, hugetlb: 0, directmap2m: Some(0), directmap4k: Some(0) },
             blockdevices: SysBlock {
                 block_devices: vec![
                     BlockDevice {
@@ -102,7 +102,7 @@ mod tests {
                     ),
                     alignment_offset: 0,
                     cache_type: "write back".to_string(),
-                    diskseq: 9,
+                    diskseq: Some(9),
                     hidden: 0,
                     inflight_reads: 1,
                     inflight_writes: 2,
