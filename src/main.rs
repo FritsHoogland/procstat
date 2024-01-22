@@ -23,6 +23,7 @@ use meminfo::print_meminfo;
 use net_dev::print_net_dev;
 use pressure::print_psi;
 use vmstat::print_vmstat;
+use loadavg::print_loadavg;
 use webserver::{root_handler,
                 cpu_handler_html,
                 cpu_handler_generate,
@@ -71,6 +72,8 @@ enum OutputOptions
     SarB,
     #[clap(name = "sar-H")]
     SarH,
+    #[clap(name = "sar-S")]
+    SarS,
     Iostat,
     IostatX,
     SarR,
@@ -80,9 +83,15 @@ enum OutputOptions
     SarNDev,
     #[clap(name = "sar-n-EDEV")]
     SarNEdev,
-    PsiCpu,
-    PsiMem,
-    PsiIo,
+    #[clap(name = "sar-q-LOAD")]
+    SarQLoad,
+    SarQ,
+    #[clap(name = "sar-q-CPU")]
+    SarQCpu,
+    #[clap(name = "sar-q-IO")]
+    SarQIo,
+    #[clap(name = "sar-q-MEM")]
+    SarQMem,
 }
 
 #[derive(Debug, Parser)]
@@ -153,8 +162,7 @@ async fn main()
         add_to_history(&statistics).await;
 
         let print_header = output_counter % args.header_print == 0;
-        match args.output
-        {
+        match args.output {
             OutputOptions::SarU => print_all_cpu(&statistics, "sar-u", print_header).await,
             OutputOptions::SarB => print_vmstat(&statistics, "sar-B", print_header).await,
             OutputOptions::Sarb => print_diskstats(&statistics, "sar-b", print_header).await,
@@ -170,9 +178,12 @@ async fn main()
             OutputOptions::SarRAll => print_meminfo(&statistics, "sar-r-ALL", print_header).await,
             OutputOptions::SarNDev => print_net_dev(&statistics, "sar-n-DEV").await,
             OutputOptions::SarNEdev => print_net_dev(&statistics, "sar-n-EDEV").await,
-            OutputOptions::PsiCpu => print_psi(&statistics, "psi-cpu", print_header).await,
-            OutputOptions::PsiMem => print_psi(&statistics, "psi-mem", print_header).await,
-            OutputOptions::PsiIo => print_psi(&statistics, "psi-io", print_header).await,
+            OutputOptions::SarQCpu => print_psi(&statistics, "sar-q-CPU", print_header).await,
+            OutputOptions::SarQLoad => print_loadavg(&statistics, "sar-q-LOAD", print_header).await,
+            OutputOptions::SarQIo => print_psi(&statistics, "sar-q-IO", print_header).await,
+            OutputOptions::SarQMem => print_psi(&statistics, "sar-q-MEM", print_header).await,
+            OutputOptions::SarQ => print_loadavg(&statistics, "sar-q-LOAD", print_header).await,
+            OutputOptions::SarS => print_meminfo(&statistics, "sar-S", print_header).await,
         }
         output_counter += 1;
     }

@@ -51,6 +51,48 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
     });
 }
 
+pub async fn print_loadavg(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) {
+    if print_header {
+        match output {
+            "sar-q-LOAD" => {
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
+                         "Timestamp",
+                         "",
+                         "runq-sz",
+                         "plist-sz",
+                         "ldavg-1",
+                         "ldavg-5",
+                         "ldavg-15",
+                         "blocked",
+                );
+            }
+            &_ => todo!(),
+        }
+    }
+    if !statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().updated_value { return };
+    let timestamp = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().last_timestamp;
+    let current_runnable = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().last_value;
+    let total = statistics.get(&("loadavg".to_string(), "".to_string(), "total".to_string())).unwrap().last_value;
+    let load_1 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string())).unwrap().last_value;
+    let load_5 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_5".to_string())).unwrap().last_value;
+    let load_15 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_15".to_string())).unwrap().last_value;
+    let blocked = statistics.get(&("stat".to_string(), "".to_string(), "processes_blocked".to_string())).unwrap().last_value;
+    match output {
+        "sar-q-LOAD" => {
+            println!("{:10} {:7}    {:10.0} {:10.0} {:10.2} {:10.2} {:10.2} {:10.0}",
+                     timestamp.format("%H:%M:%S"),
+                     "",
+                     current_runnable,
+                     total,
+                     load_1,
+                     load_5,
+                     load_15,
+                     blocked,
+            );
+        }
+        &_ => todo!(),
+    }
+}
 
 
 #[derive(Debug, Default)]

@@ -94,6 +94,16 @@ pub async fn print_meminfo(
                     "mbhugsurp",
                 );
             },
+            "sar-S" => {
+                println!("{:10}    {:>10} {:>10} {:>10} {:>10} {:>10}",
+                    "Timestamp",
+                    "mbswpfree",
+                    "mbswpused",
+                    "%swpused",
+                    "mbswpcad",
+                    "%swpcad",
+                );
+            },
             &_ => todo!(),
         }
     }
@@ -113,21 +123,28 @@ pub async fn print_meminfo(
     let slab = statistics.get(&("meminfo".to_string(), "".to_string(), "slab".to_string())).unwrap().last_value;
     let kernelstack = statistics.get(&("meminfo".to_string(), "".to_string(), "kernelstack".to_string())).unwrap().last_value;
     let pagetables = statistics.get(&("meminfo".to_string(), "".to_string(), "pagetables".to_string())).unwrap().last_value;
-    let vmalloctotal = statistics.get(&("meminfo".to_string(), "".to_string(), "vmalloctotal".to_string())).unwrap().last_value;
+    let vmallocused = statistics.get(&("meminfo".to_string(), "".to_string(), "vmallocused".to_string())).unwrap().last_value;
     let hugepages_total = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_total".to_string())).unwrap().last_value;
     let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string())).unwrap().last_value;
     let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string())).unwrap().last_value;
     let hugepages_reserved = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_rsvd".to_string())).unwrap().last_value;
     let hugepages_surplus = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_surp".to_string())).unwrap().last_value;
+    let swap_free = statistics.get(&("meminfo".to_string(), "".to_string(), "swapfree".to_string())).unwrap().last_value;
+    let swap_total = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string())).unwrap().last_value;
+    let swap_cached = statistics.get(&("meminfo".to_string(), "".to_string(), "swapcached".to_string())).unwrap().last_value;
+    // this is what sar defines as non-used memory; see: https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/pr_stats.c#L809
+    let mut non_used_memory = memfree + buffers + cached + slab;
+    if non_used_memory > memtotal { non_used_memory = memtotal };
 
     match output {
+        // https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/pr_stats.c#L789
         "sar-r" => {
-            println!("{:10}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+            println!("{:10}    {:10.0} {:10.0} {:10.0} {:10.2} {:10.0} {:10.0} {:10.0} {:10.2} {:10.0} {:10.0} {:10.0}",
                 timestamp.format("%H:%M:%S"),
                 memfree / 1024_f64,
                 memavailable / 1024_f64,
-                (memtotal - memfree) / 1024_f64,
-                (memtotal - memfree) / memtotal * 100_f64,
+                (memtotal - non_used_memory) / 1024_f64,
+                (memtotal - non_used_memory) / memtotal * 100_f64,
                 buffers / 1024_f64,
                 cached / 1024_f64,
                 committed_as / 1024_f64,
@@ -138,24 +155,24 @@ pub async fn print_meminfo(
             );
         },
         "sar-r-ALL" => {
-            println!("{:10}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
-                     timestamp.format("%H:%M:%S"),
-                     memfree / 1024_f64,
-                     memavailable / 1024_f64,
-                     (memtotal - memfree) / 1024_f64,
-                     (memtotal - memfree) / memtotal * 100_f64,
-                     buffers / 1024_f64,
-                     cached / 1024_f64,
-                     committed_as / 1024_f64,
-                     committed_as / (memtotal + swaptotal) * 100_f64,
-                     active / 1024_f64,
-                     inactive / 1024_f64,
-                     dirty / 1024_f64,
-                     anonpages / 1024_f64,
-                     slab / 1024_f64,
-                     kernelstack / 1024_f64,
-                     pagetables / 1024_f64,
-                     vmalloctotal / 1024_f64,
+            println!("{:10}    {:10.0} {:10.0} {:10.0} {:10.2} {:10.0} {:10.0} {:10.0} {:10.2} {:10.0} {:10.0} {:10.0} {:10.0} {:10.0} {:10.0} {:10.0} {:10.0}",
+                timestamp.format("%H:%M:%S"),
+                memfree / 1024_f64,
+                memavailable / 1024_f64,
+                (memtotal - non_used_memory) / 1024_f64,
+                (memtotal - non_used_memory) / memtotal * 100_f64,
+                buffers / 1024_f64,
+                cached / 1024_f64,
+                committed_as / 1024_f64,
+                committed_as / (memtotal + swaptotal) * 100_f64,
+                active / 1024_f64,
+                inactive / 1024_f64,
+                dirty / 1024_f64,
+                anonpages / 1024_f64,
+                slab / 1024_f64,
+                kernelstack / 1024_f64,
+                pagetables / 1024_f64,
+                vmallocused / 1024_f64,
             );
         },
         "sar-H" => {
@@ -166,6 +183,16 @@ pub async fn print_meminfo(
                 if hugepages_total == 0_f64 { 0_f64 } else { (hugepages_total - hugepages_free) / hugepages_total * 100_f64 },
                 (hugepages_reserved * hugepagesize ) / (1024_f64 * 1024_f64),
                 (hugepages_surplus * hugepagesize ) / (1024_f64 * 1024_f64),
+            );
+        },
+        "sar-S" => {
+            println!("{:10}    {:10.0} {:10.0} {:10.2} {:10.0} {:10.0}",
+                timestamp.format("%H:%M:%S"),
+                swap_free / 1024_f64,
+                (swap_total - swap_free) / 1024_f64,
+                if swap_total == 0_f64 { 0_f64 } else { (swap_total - swap_free) / swap_total * 100_f64 },
+                swap_cached / 1024_f64,
+                if swap_total - swap_free == 0_f64 { 0_f64} else { swap_cached / (swap_total - swap_free) * 100_f64 },
             );
         },
         &_ => todo!(),

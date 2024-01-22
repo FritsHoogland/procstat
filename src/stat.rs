@@ -11,6 +11,7 @@ use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64,
 use crate::loadavg::load_plot;
 use crate::pressure::pressure_cpu_some_plot;
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
+use crate::add_list_of_u64_data_to_statistics;
 
 #[derive(Debug)]
 pub struct CpuStat {
@@ -34,10 +35,7 @@ pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(S
     for cpu_stat in &proc_data.stat.cpu_individual {
         process_cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await;
     }
-    single_statistic_u64("stat", "","context_switches", proc_data.timestamp, proc_data.stat.context_switches, statistics).await;
-    single_statistic_u64("stat", "", "processes", proc_data.timestamp, proc_data.stat.processes, statistics).await;
-    single_statistic_u64("stat", "", "processes_running", proc_data.timestamp, proc_data.stat.processes_running, statistics).await;
-    single_statistic_u64("stat", "", "processes_blocked", proc_data.timestamp, proc_data.stat.processes_blocked, statistics).await;
+    add_list_of_u64_data_to_statistics!(stat, "", proc_data.timestamp, proc_data, stat, statistics, context_switches, processes, processes_running, processes_blocked);
     single_statistic_u64("stat", "", "interrupts_total", proc_data.timestamp, proc_data.stat.interrupts.first().cloned().unwrap(), statistics).await;
     single_statistic_u64("stat", "", "softirq_total", proc_data.timestamp, proc_data.stat.softirq.first().cloned().unwrap(), statistics).await;
 }

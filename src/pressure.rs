@@ -128,52 +128,45 @@ pub async fn add_pressure_to_history(statistics: &HashMap<(String, String, Strin
     });
 }
 
-pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool)
-{
-    if print_header
-    {
-        match output
-        {
-            "psi-cpu" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) {
+    if print_header {
+        match output {
+            "sar-q-CPU" => {
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "",
-                         "cpu-s-10",
-                         "cpu-s-60",
-                         "cpu-s-300",
-                         "cpu-s-tot",
-                         "cpu-f-10",
-                         "cpu-f-60",
-                         "cpu-f-300",
-                         "cpu-f-tot",
+                         "%scpu-10",
+                         "%scpu-60",
+                         "%scpu-300",
+                         "%scpu",
                 );
             },
-            "psi-mem" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            "sar-q-IO" => {
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "",
-                         "mem-s-10",
-                         "mem-s-60",
-                         "mem-s-300",
-                         "mem-s-tot",
-                         "mem-f-10",
-                         "mem-f-60",
-                         "mem-f-300",
-                         "mem-f-tot",
+                         "%sio-10",
+                         "%sio-60",
+                         "%sio-300",
+                         "%sio",
+                         "%fio-10",
+                         "%fio-60",
+                         "%fio-300",
+                         "%fio",
                 );
             },
-            "psi-io" => {
-                println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            "sar-q-MEM" => {
+                println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
                          "",
-                         "io-s-10",
-                         "io-s-60",
-                         "io-s-300",
-                         "io-s-tot",
-                         "io-f-10",
-                         "io-f-60",
-                         "io-f-300",
-                         "io-f-tot",
+                         "%smem-10",
+                         "%smem-60",
+                         "%smem-300",
+                         "%smem",
+                         "%fmem-10",
+                         "%fmem-60",
+                         "%fmem-300",
+                         "%fmem",
                 );
             },
             &_ => todo! {},
@@ -184,69 +177,66 @@ pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>
     let cpu_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().last_value;
     let cpu_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg60".to_string())).unwrap().last_value;
     let cpu_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg300".to_string())).unwrap().last_value;
-    let cpu_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
-    let cpu_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg10".to_string())).unwrap().last_value;
-    let cpu_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg60".to_string())).unwrap().last_value;
-    let cpu_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg300".to_string())).unwrap().last_value;
-    let cpu_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
+    let cpu_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_total".to_string())).unwrap().per_second_value;
+    // these are currently not used, but are added to the kernel source
+    //let cpu_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg10".to_string())).unwrap().last_value;
+    //let cpu_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg60".to_string())).unwrap().last_value;
+    //let cpu_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg300".to_string())).unwrap().last_value;
+    //let cpu_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_total".to_string())).unwrap().per_second_value;
     let mem_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg10".to_string())).unwrap().last_value;
     let mem_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg60".to_string())).unwrap().last_value;
     let mem_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg300".to_string())).unwrap().last_value;
-    let mem_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
+    let mem_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_total".to_string())).unwrap().per_second_value;
     let mem_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg10".to_string())).unwrap().last_value;
     let mem_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg60".to_string())).unwrap().last_value;
     let mem_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg300".to_string())).unwrap().last_value;
-    let mem_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
+    let mem_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_total".to_string())).unwrap().per_second_value;
     let io_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg10".to_string())).unwrap().last_value;
     let io_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg60".to_string())).unwrap().last_value;
     let io_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg300".to_string())).unwrap().last_value;
-    let io_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
+    let io_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_total".to_string())).unwrap().per_second_value;
     let io_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg10".to_string())).unwrap().last_value;
     let io_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg60".to_string())).unwrap().last_value;
     let io_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg300".to_string())).unwrap().last_value;
-    let io_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg300".to_string())).unwrap().per_second_value / 1_000_000_f64;
+    let io_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_total".to_string())).unwrap().per_second_value;
     match output
     {
-        "psi-cpu" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+        "sar-q-CPU" => {
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "",
                      cpu_some_avg10,
                      cpu_some_avg60,
                      cpu_some_avg300,
-                     cpu_some_total,
-                     cpu_full_avg10,
-                     cpu_full_avg60,
-                     cpu_full_avg300,
-                     cpu_full_total,
+                     cpu_some_total / 10_000_f64,
             );
         },
-        "psi-mem" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
-                     timestamp.format("%H:%M:%S"),
-                     "",
-                     mem_some_avg10,
-                     mem_some_avg60,
-                     mem_some_avg300,
-                     mem_some_total,
-                     mem_full_avg10,
-                     mem_full_avg60,
-                     mem_full_avg300,
-                     mem_full_total,
-            );
-        },
-        "psi-io" => {
-            println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+        "sar-q-IO" => {
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "",
                      io_some_avg10,
                      io_some_avg60,
                      io_some_avg300,
-                     io_some_total,
+                     io_some_total / 10_000_f64,
                      io_full_avg10,
                      io_full_avg60,
                      io_full_avg300,
-                     io_full_total,
+                     io_full_total / 10_000_f64,
+            );
+        },
+        "sar-q-MEM" => {
+            println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
+                     timestamp.format("%H:%M:%S"),
+                     "",
+                     mem_some_avg10,
+                     mem_some_avg60,
+                     mem_some_avg300,
+                     mem_some_total / 10_000_f64,
+                     mem_full_avg10,
+                     mem_full_avg60,
+                     mem_full_avg300,
+                     mem_full_total / 10_000_f64,
             );
         },
         &_ => todo! {},

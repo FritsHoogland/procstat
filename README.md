@@ -39,16 +39,18 @@ Current output options:
 - sar-H
 - sar-n-DEV
 - sar-n-EDEV
+- sar-q (= sar-q-LOAD)
+- sar-q-CPU
+- sar-q-IO
+- sar-q-MEM
 - sar-r
 - sar-r-ALL
+- sar-S
 - sar-u (default)
 - sar-u-ALL 
 - mpstat-P-ALL
 - cpu-all (custom option showing CPU time instead of percentages)
 - per-cpu-all (custom option showing CPU time instead of percentages per CPU)
-- psi-cpu (custom option showing cpu pressure stall information)
-- psi-mem (custom option showing memory pressure stall information)
-- psi-io (custom option showing io pressure stall information)
 
 ## The webserver
 Currently, `procstat` always starts a webserver on port `1111`. I am considering enabling and disabling this via a switch, and the port should be configurable in the future.

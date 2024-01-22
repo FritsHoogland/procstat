@@ -162,7 +162,7 @@ pub async fn print_net_dev(
     match output
     {
         "sar-n-DEV" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "Timestamp",
                      "IFACE",
                      "rxpck/s",
@@ -175,7 +175,7 @@ pub async fn print_net_dev(
             );
         }
         "sar-n-EDEV" => {
-            println!("{:10} {:7}    {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                      "Timestamp",
                      "IFACE",
                      "rxerr/s",
@@ -184,6 +184,7 @@ pub async fn print_net_dev(
                      "rxdrop/s",
                      "txdrop/s",
                      "txcarr/s",
+                     "rxfram/s",
                      "rxfifo/s",
                      "txfifo/s",
             );
@@ -207,13 +208,14 @@ pub async fn print_net_dev(
         let receive_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_drop".to_string())).unwrap().per_second_value;
         let transmit_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_drop".to_string())).unwrap().per_second_value;
         let transmit_carrier = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_carrier".to_string())).unwrap().per_second_value;
+        let receive_frame = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_frame".to_string())).unwrap().per_second_value;
         let receive_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_fifo".to_string())).unwrap().per_second_value;
         let transmit_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_fifo".to_string())).unwrap().per_second_value;
 
         match output
         {
             "sar-n-DEV" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                          timestamp.format("%H:%M:%S"),
                          device,
                          receive_packets,
@@ -226,7 +228,7 @@ pub async fn print_net_dev(
                 );
             }
             "sar-n-EDEV" => {
-                println!("{:10} {:7}    {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+                println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                          timestamp.format("%H:%M:%S"),
                          device,
                          receive_errors,
@@ -235,6 +237,7 @@ pub async fn print_net_dev(
                          receive_drop,
                          transmit_drop,
                          transmit_carrier,
+                         receive_frame,
                          receive_fifo,
                          transmit_fifo,
                 );
