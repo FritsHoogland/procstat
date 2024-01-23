@@ -408,6 +408,24 @@ pub async fn print_vmstat(statistics: &HashMap<(String, String, String), Statist
                          "pgdem/s",
                 );
             },
+                    /*
+            "sar-W" => {
+                println!("{:10} {:7}    {:>10} {:>10}",
+                         "Timestamp",
+                         "cpu",
+                         "pgpgin/s",
+                         "pgpgout/s",
+                         "fault/s",
+                         "majfault/s",
+                         "pgfree/s",
+                         "pgscank/s",
+                         "pgscand/s",
+                         "pgsteal/s",
+                         "pgprom/s",
+                         "pgdem/s",
+                );
+            },
+        */
             &_ => todo! {},
         }
     }

@@ -101,7 +101,7 @@ mod tests {
                         304,
                     ),
                     alignment_offset: 0,
-                    cache_type: "write back".to_string(),
+                    cache_type: Some("write back".to_string()),
                     diskseq: Some(9),
                     hidden: 0,
                     inflight_reads: 1,
