@@ -118,6 +118,14 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                          "sched_w_s",
                 );
             },
+            "sar-w" => {
+                println!("{:10} {:7}    {:>10} {:>10}",
+                         "Timestamp",
+                         "",
+                         "proc/s",
+                         "cswch/s",
+                );
+            },
             &_ => todo! {},
         }
     }
@@ -136,6 +144,8 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
     let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1_000_000_f64;
     let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1_000_000_f64;
+    let processes = statistics.get(&("stat".to_string(), "".to_string(), "processes".to_string())).unwrap().per_second_value;
+    let context_switches = statistics.get(&("stat".to_string(), "".to_string(), "context_switches".to_string())).unwrap().per_second_value;
     match output
     {
         "sar-u" => {
@@ -182,6 +192,14 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
                      idle/1000_f64,
                      scheduler_running/1000_f64,
                      scheduler_waiting/1000_f64,
+            );
+        },
+        "sar-w" => {
+            println!("{:10} {:7}    {:10.2} {:10.2}",
+                     timestamp.format("%H:%M:%S"),
+                     "",
+                    processes,
+                    context_switches,
             );
         },
         &_ => todo!{},

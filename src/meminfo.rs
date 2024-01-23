@@ -326,20 +326,28 @@ fn memory_plot(
     // The next memory areas should be stacked, so the 'top' memory allocation should be shown first, then one allocation removed, etc.
     // This is a manually constructed stacked area graph.
     // First hugepages used.
-    // hugepages_used, hugepages_free, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
+    // hugepages_used, hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
     let min_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let max_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (((meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize) + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (((meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages used", min_hugepages_used/1024_f64, max_hugepages_used/1024_f64, ((latest.hugepages_total - latest.hugepages_free)*latest.hugepagesize)/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
-    // hugepages_free, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
+    // hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
     let min_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let max_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_free * meminfo.hugepagesize) + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_free * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages free", min_hugepages_free/1024_f64, max_hugepages_free/1024_f64, (latest.hugepages_free * latest.hugepagesize)/1024_f64))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
+    palette99_pick += 1;
+    // buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
+    let min_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let max_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "buffers", min_buffers/1024_f64, max_buffers/1024_f64, latest.buffers / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree

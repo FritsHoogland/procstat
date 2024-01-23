@@ -92,6 +92,11 @@ enum OutputOptions
     SarQIo,
     #[clap(name = "sar-q-MEM")]
     SarQMem,
+    #[clap(name = "sar-W")]
+    SarW,
+    #[clap(name = "sar-w")]
+    Sarw,
+    Vmstat,
 }
 
 #[derive(Debug, Parser)]
@@ -184,6 +189,9 @@ async fn main()
             OutputOptions::SarQMem => print_psi(&statistics, "sar-q-MEM", print_header).await,
             OutputOptions::SarQ => print_loadavg(&statistics, "sar-q-LOAD", print_header).await,
             OutputOptions::SarS => print_meminfo(&statistics, "sar-S", print_header).await,
+            OutputOptions::SarW => print_vmstat(&statistics, "sar-W", print_header).await,
+            OutputOptions::Sarw => print_all_cpu(&statistics, "sar-w", print_header).await,
+            OutputOptions::Vmstat => print_vmstat(&statistics, "vmstat", print_header).await,
         }
         output_counter += 1;
     }
