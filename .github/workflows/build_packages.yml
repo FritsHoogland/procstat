@@ -89,7 +89,7 @@ jobs:
     - name: upload rpm to release
       uses: "AButler/upload-release-assets@v2.0"
       with:
-        files: 'target/generate-rpm/*'
+        files: 'target/generate-rpm/*rpm'
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
         release-tag: "latest"
 
@@ -143,6 +143,6 @@ jobs:
     - name: upload rpm to release
       uses: "AButler/upload-release-assets@v2.0"
       with:
-        files: 'target/debian/*'
+        files: 'target/debian/*deb'
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
         release-tag: "latest"
