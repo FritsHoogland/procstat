@@ -43,8 +43,8 @@ pub struct PressureInfo {
     pub memory_full_total: f64,
 }
 
-pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
+    if proc_data.pressure.psi.as_ref().is_none() { return };
     single_statistic_f64("pressure", "","cpu_some_avg10", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg10, statistics).await;
     single_statistic_f64("pressure", "","cpu_some_avg60", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg60, statistics).await;
     single_statistic_f64("pressure", "","cpu_some_avg300", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg300, statistics).await;
@@ -73,6 +73,7 @@ pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMa
 
 pub async fn add_pressure_to_history(statistics: &HashMap<(String, String, String), Statistic>)
 {
+    if !statistics.contains_key(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())) { return };
     if !statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().last_timestamp;
     let cpu_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().last_value;

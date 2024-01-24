@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
+use log::debug;
 
 use crate::stat::{add_cpu_total_to_history, process_stat_data};
 use crate::schedstat::process_schedstat_data;
@@ -79,13 +80,21 @@ pub async fn read_proc_data() -> ProcData
 {
     let timestamp = Local::now();
     let proc_stat = proc_sys_parser::stat::read();
+    debug!("Stat: {:?}", proc_stat);
     let proc_schedstat = proc_sys_parser::schedstat::read();
+    debug!("Schedstat: {:?}", proc_schedstat);
     let proc_meminfo = proc_sys_parser::meminfo::read();
+    debug!("Meminfo: {:?}", proc_meminfo);
     let sys_block_devices = proc_sys_parser::block::read();
+    debug!("Block: {:?}", sys_block_devices);
     let proc_netdev = proc_sys_parser::net_dev::read();
+    debug!("Netdev: {:?}", proc_netdev);
     let proc_loadavg = proc_sys_parser::loadavg::read();
+    debug!("Loadavg: {:?}", proc_loadavg);
     let proc_pressure = proc_sys_parser::pressure::read();
+    debug!("Pressure: {:?}", proc_pressure);
     let proc_vmstat = proc_sys_parser::vmstat::read();
+    debug!("Vmstat: {:?}", proc_vmstat);
     ProcData {
         timestamp,
         stat: proc_stat,
