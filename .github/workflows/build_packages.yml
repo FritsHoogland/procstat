@@ -40,7 +40,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: add operating system packages
-      run: yum update && yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
+      run: yum update -y && yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
     
     - name: install rust toolchain
       uses: actions-rs/toolchain@v1
