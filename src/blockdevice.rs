@@ -5,13 +5,14 @@ use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::Uppe
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::{*, full_palette::PURPLE};
+use serde::{Serialize, Deserialize};
 
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::pressure::pressure_io_plot;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct BlockDeviceInfo {
     pub timestamp: DateTime<Local>,
     pub device_name: String,

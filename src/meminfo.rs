@@ -12,8 +12,9 @@ use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::add_list_of_u64_data_to_statistics;
 use sysctl::{Ctl, Sysctl};
 use crate::pressure::pressure_memory_plot;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemInfo {
     pub timestamp: DateTime<Local>,
     pub memfree: f64,

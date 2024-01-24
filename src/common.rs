@@ -1,4 +1,5 @@
 use crate::stat::CpuStat;
+use crate::HISTORY;
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
@@ -13,10 +14,10 @@ use crate::loadavg::{add_loadavg_to_history, LoadavgInfo, process_loadavg_data};
 use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data};
 use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};
 use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data};
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug)]
-pub struct ProcData
-{
+pub struct ProcData {
     pub timestamp: DateTime<Local>,
     pub stat: proc_sys_parser::stat::ProcStat,
     pub schedstat: proc_sys_parser::schedstat::ProcSchedStat,
@@ -29,8 +30,7 @@ pub struct ProcData
 }
 
 #[derive(Debug, Default)]
-pub struct Statistic
-{
+pub struct Statistic {
     pub last_timestamp: DateTime<Local>,
     pub last_value: f64,
     pub delta_value: f64,
@@ -39,8 +39,7 @@ pub struct Statistic
 }
 
 #[derive(Debug)]
-pub struct HistoricalData
-{
+pub struct HistoricalData {
     pub cpu: RwLock<BoundedVecDeque<CpuStat>>,
     pub memory: RwLock<BoundedVecDeque<MemInfo>>,
     pub blockdevices: RwLock<BoundedVecDeque<BlockDeviceInfo>>,
@@ -50,8 +49,7 @@ pub struct HistoricalData
     pub vmstat: RwLock<BoundedVecDeque<VmStatInfo>>,
 }
 
-impl HistoricalData
-{
+impl HistoricalData {
     pub fn new(history: usize) -> HistoricalData {
         HistoricalData {
             cpu: RwLock::new(BoundedVecDeque::new(history)),
@@ -65,19 +63,18 @@ impl HistoricalData
     }
 }
 
-pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>)
-{
-    add_cpu_total_to_history(statistics).await;
-    add_memory_to_history(statistics).await;
-    add_blockdevices_to_history(statistics).await;
-    add_networkdevices_to_history(statistics).await;
-    add_loadavg_to_history(statistics).await;
-    add_pressure_to_history(statistics).await;
-    add_vmstat_to_history(statistics).await;
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct HistoricalDataTransit {
+    pub cpu: Vec<CpuStat>,
+    pub memory: Vec<MemInfo>,
+    pub blockdevices: Vec<BlockDeviceInfo>,
+    pub networkdevices: Vec<NetworkDeviceInfo>,
+    pub loadavg: Vec<LoadavgInfo>,
+    pub pressure: Vec<PressureInfo>,
+    pub vmstat: Vec<VmStatInfo>,
 }
 
-pub async fn read_proc_data() -> ProcData
-{
+pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) {
     let timestamp = Local::now();
     let proc_stat = proc_sys_parser::stat::read();
     debug!("Stat: {:?}", proc_stat);
@@ -95,7 +92,7 @@ pub async fn read_proc_data() -> ProcData
     debug!("Pressure: {:?}", proc_pressure);
     let proc_vmstat = proc_sys_parser::vmstat::read();
     debug!("Vmstat: {:?}", proc_vmstat);
-    ProcData {
+    let proc_data = ProcData {
         timestamp,
         stat: proc_stat,
         schedstat: proc_schedstat,
@@ -105,11 +102,12 @@ pub async fn read_proc_data() -> ProcData
         loadavg: proc_loadavg,
         pressure: proc_pressure,
         vmstat: proc_vmstat,
-    }
+    };
+    process_data(proc_data, statistics).await;
+    add_to_history(statistics).await;
 }
 
-pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
     process_stat_data(&proc_data, statistics).await;
     process_schedstat_data(&proc_data, statistics).await;
     process_meminfo_data(&proc_data, statistics).await;
@@ -118,6 +116,31 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
     process_loadavg_data(&proc_data, statistics).await;
     process_pressure_data(&proc_data, statistics).await;
     process_vmstat_data(&proc_data, statistics).await;
+}
+
+pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
+    // history management happens here
+    add_cpu_total_to_history(statistics).await;
+    add_memory_to_history(statistics).await;
+    add_blockdevices_to_history(statistics).await;
+    add_networkdevices_to_history(statistics).await;
+    add_loadavg_to_history(statistics).await;
+    add_pressure_to_history(statistics).await;
+    add_vmstat_to_history(statistics).await;
+}
+
+pub async fn save_history() {
+    let mut transition = HistoricalDataTransit::default();
+    transition.cpu = HISTORY.cpu.read().unwrap().iter().cloned().collect::<Vec<CpuStat>>();
+    transition.memory = HISTORY.memory.read().unwrap().iter().cloned().collect::<Vec<MemInfo>>();
+    transition.blockdevices = HISTORY.blockdevices.read().unwrap().iter().cloned().collect::<Vec<BlockDeviceInfo>>();
+    transition.networkdevices = HISTORY.networkdevices.read().unwrap().iter().cloned().collect::<Vec<NetworkDeviceInfo>>();
+    transition.loadavg = HISTORY.loadavg.read().unwrap().iter().cloned().collect::<Vec<LoadavgInfo>>();
+    transition.pressure = HISTORY.pressure.read().unwrap().iter().cloned().collect::<Vec<PressureInfo>>();
+    transition.vmstat = HISTORY.vmstat.read().unwrap().iter().cloned().collect::<Vec<VmStatInfo>>();
+
+
+
 }
 
 pub async fn single_statistic_u64(

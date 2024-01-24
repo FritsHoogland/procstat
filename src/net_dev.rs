@@ -7,13 +7,13 @@ use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::Uppe
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
-//use plotters::prelude::{AreaSeries, BLACK, GREEN, LineSeries, RED, ShapeStyle, TRANSPARENT, WHITE};
+use serde::{Serialize, Deserialize};
 //
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NetworkDeviceInfo {
     pub timestamp: DateTime<Local>,
     pub device_name: String,

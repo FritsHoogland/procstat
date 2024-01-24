@@ -1,10 +1,11 @@
 use chrono::{DateTime, Local};
 use std::collections::{HashMap, BTreeSet};
+use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
 use crate::{add_list_of_u64_data_to_statistics, add_list_of_option_u64_data_to_statistics};
 use crate::HISTORY;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VmStatInfo {
     pub timestamp: DateTime<Local>,
     pub nr_free_pages: f64,

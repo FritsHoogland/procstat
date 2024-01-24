@@ -12,8 +12,9 @@ use plotters::style::full_palette::{GREY_A100, GREY_500};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{add_list_of_f64_data_to_statistics, add_list_of_u64_data_to_statistics};
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoadavgInfo {
     pub timestamp: DateTime<Local>,
     pub load_1: f64,

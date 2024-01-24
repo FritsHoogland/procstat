@@ -11,10 +11,11 @@ use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
 use plotters::style::full_palette::{BLUE_900, BLUE_500, RED_A400, RED_900, RED_200, BLUE_100};
+use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64, single_statistic_option_u64, single_statistic_option_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PressureInfo {
     pub timestamp: DateTime<Local>,
     pub cpu_some_avg10: f64,
