@@ -48,7 +48,10 @@ Current output options:
 - sar-S
 - sar-u (default)
 - sar-u-ALL 
+- sar-w
+- sar-W
 - mpstat-P-ALL
+- vmstat
 - cpu-all (custom option showing CPU time instead of percentages)
 - per-cpu-all (custom option showing CPU time instead of percentages per CPU)
 

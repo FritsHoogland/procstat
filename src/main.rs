@@ -1,9 +1,11 @@
 use time::Duration;
-use tokio::time;
+use tokio::time::{self, Instant};
 use std::{process, collections::HashMap};
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
 use axum::{Router, routing::get};
+use log::info;
+use env_logger;
 
 mod common;
 mod stat;
@@ -123,9 +125,13 @@ static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
 #[tokio::main]
 async fn main()
 {
+    env_logger::init();
+    info!("Start procstat");
+    let timer = Instant::now();
     let args = Opts::parse();
 
     ctrlc::set_handler(move || {
+        info!("End procstat, total time: {:?}", timer.elapsed());
         process::exit(0);
     }).unwrap();
 

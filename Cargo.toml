@@ -1,6 +1,6 @@
 [package]
 name = "procstat"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "apache-2.0"
 description = "A utility to show and extract runtime statistics from a linux system."
@@ -16,11 +16,13 @@ bounded-vec-deque = "0.1.1"
 chrono = "0.4.31"
 clap = { version = "4.4.11", features = ["derive"] }
 ctrlc = "3.4.1"
+env_logger = "0.11.0"
 futures = "0.3.30"
 image = "0.24.7"
+log = "0.4.20"
 once_cell = "1.19.0"
 plotters = "0.3.5"
-proc_sys_parser = "0.1.13"
+proc_sys_parser = "0.1.14"
 sysctl = "0.5.5"
 tokio = { version = "1.35.0", features = ["full"] }
 
