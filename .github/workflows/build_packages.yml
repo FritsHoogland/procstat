@@ -134,6 +134,9 @@ jobs:
       with:
         command: deb
 
+    - if: ${{ matrix.container == 'ubuntu:20.04' }}
+      run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.20.04.1_\2/')
+
     - if: ${{ matrix.container == 'ubuntu:22.04' }}
       run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
 
