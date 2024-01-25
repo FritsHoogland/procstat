@@ -25,7 +25,7 @@ mod tests {
     use proc_sys_parser::net_dev::InterfaceStats;
     use proc_sys_parser::net_dev::ProcNetDev;
     use proc_sys_parser::meminfo::ProcMemInfo;
-    use proc_sys_parser::schedstat::ProcSchedStat;
+    use proc_sys_parser::schedstat::{ProcSchedStat, Domain};
     use proc_sys_parser::stat::ProcStat;
     use proc_sys_parser::stat::CpuStat;
     use chrono::DateTime;
@@ -49,20 +49,25 @@ mod tests {
                                        processes_running: 1,
                                        processes_blocked: 0,
                                        softirq: vec![5828301, 29, 1309452, 3, 362338, 11, 0, 311, 1998829, 0, 2157328] },
-            schedstat: ProcSchedStat { version: 15, timestamp: 4313542756, cpu: vec![
-                vec![0, 0, 0, 0, 0, 0, 0, 217794498927, 8771639928, 2509871],
-                vec![1, 0, 0, 0, 0, 0, 0, 206982770373, 7026635877, 2113821],
-                vec![2, 0, 0, 0, 0, 0, 0, 202767854725, 6922696498, 2133076],
-                vec![3, 0, 0, 0, 0, 0, 0, 203424540826, 6963648533, 2168592],
-                vec![4, 0, 0, 0, 0, 0, 0, 199197308929, 6651544983, 2100715],
-                vec![5, 0, 0, 0, 0, 0, 0, 202369695269, 6838385853, 2143574]],
-                domain: vec![
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    vec![0, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] },
+            schedstat: ProcSchedStat { version: 15,
+            timestamp: 4318961659,
+            cpu: vec![
+                   vec![0, 0, 0, 0, 0, 0, 0, 457571901633, 48594074614, 4348645],
+                   vec![1, 0, 0, 0, 0, 0, 0, 435206433012, 44944145715, 3928368],
+                   vec![2, 0, 0, 0, 0, 0, 0, 429637514081, 43591673257, 3833297],
+                   vec![3, 0, 0, 0, 0, 0, 0, 445308389036, 43102743982, 3851418],
+                   vec![4, 0, 0, 0, 0, 0, 0, 438666554521, 43706845278, 3787400],
+                   vec![5, 0, 0, 0, 0, 0, 0, 444708323872, 42862371788, 3900565],
+            ],
+            domain: vec![
+                Domain { cpu_nr: 0, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 
+                Domain { cpu_nr: 1, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 
+                Domain { cpu_nr: 2, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 
+                Domain { cpu_nr: 3, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 
+                Domain { cpu_nr: 4, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 
+                Domain { cpu_nr: 5, domain_nr: 0, cpu_masks: vec![63], statistics: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+            ] 
+            },
             meminfo: ProcMemInfo { memtotal: 3997876, memfree: 2372092, memavailable: 3651296, buffers: 42532, cached: 1337228, swapcached: 0, active: 696380, inactive: 768204, active_anon: 84664, inactive_anon: 5200, active_file: 611716, inactive_file: 763004, unevictable: 4000, mlocked: 0, swaptotal: 0, swapfree: 0, zswap: 0, zswapped: 0, dirty: 32172, writeback: 0, anonpages: 88940, mapped: 137120, shmem: 5016, kreclaimable: 64240, slab: 102188, sreclaimable: 64240, sunreclaim: 37948, kernelstack: 3328, shadowcallstack: 856, pagetables: 2744, secpagetables: 0, nfs_unstable: 0, bounce: 0, writebacktmp: 0, commitlimit: 1998936, committed_as: 1123336, vmalloctotal: 133141626880, vmallocused: 14260, vmallocchunk: 0, percpu: 2256, hardwarecorrupted: 0, anonhugepages: 6144, shmemhugepages: 0, shmempmdmapped: 0, filehugepages: 0, filepmdmapped: 0, cmatotal: 32768, cmafree: 31232, hugepages_total: 0, hugepages_free: 0, hugepages_rsvd: 0, hugepages_surp: 0, hugepagesize: 2048, hugetlb: 0, directmap2m: Some(0), directmap4k: Some(0) },
             blockdevices: SysBlock {
                 block_devices: vec![
