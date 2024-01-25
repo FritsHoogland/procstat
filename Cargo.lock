@@ -1301,9 +1301,9 @@ dependencies = [
 
 [[package]]
 name = "proc_sys_parser"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6420edbf83ae81ef3c438059cef5916c6440c9cd8869ec7d44ec5357388e3c00"
+checksum = "90a614e69420bdf5c71274262e12b9f12225f521501f104feeb44748a248f2fa"
 dependencies = [
  "log",
  "nix",
@@ -1312,7 +1312,7 @@ dependencies = [
 
 [[package]]
 name = "procstat"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "axum",
  "bounded-vec-deque",

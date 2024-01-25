@@ -1,5 +1,5 @@
 use crate::stat::CpuStat;
-use crate::HISTORY;
+//use crate::HISTORY;
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
@@ -129,19 +129,16 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
     add_vmstat_to_history(statistics).await;
 }
 
-pub async fn save_history() {
-    let mut transition = HistoricalDataTransit::default();
-    transition.cpu = HISTORY.cpu.read().unwrap().iter().cloned().collect::<Vec<CpuStat>>();
-    transition.memory = HISTORY.memory.read().unwrap().iter().cloned().collect::<Vec<MemInfo>>();
-    transition.blockdevices = HISTORY.blockdevices.read().unwrap().iter().cloned().collect::<Vec<BlockDeviceInfo>>();
-    transition.networkdevices = HISTORY.networkdevices.read().unwrap().iter().cloned().collect::<Vec<NetworkDeviceInfo>>();
-    transition.loadavg = HISTORY.loadavg.read().unwrap().iter().cloned().collect::<Vec<LoadavgInfo>>();
-    transition.pressure = HISTORY.pressure.read().unwrap().iter().cloned().collect::<Vec<PressureInfo>>();
-    transition.vmstat = HISTORY.vmstat.read().unwrap().iter().cloned().collect::<Vec<VmStatInfo>>();
-
-
-
-}
+//pub async fn save_history() {
+//    let mut transition = HistoricalDataTransit::default();
+//    transition.cpu = HISTORY.cpu.read().unwrap().iter().cloned().collect::<Vec<CpuStat>>();
+//    transition.memory = HISTORY.memory.read().unwrap().iter().cloned().collect::<Vec<MemInfo>>();
+//    transition.blockdevices = HISTORY.blockdevices.read().unwrap().iter().cloned().collect::<Vec<BlockDeviceInfo>>();
+//    transition.networkdevices = HISTORY.networkdevices.read().unwrap().iter().cloned().collect::<Vec<NetworkDeviceInfo>>();
+//    transition.loadavg = HISTORY.loadavg.read().unwrap().iter().cloned().collect::<Vec<LoadavgInfo>>();
+//    transition.pressure = HISTORY.pressure.read().unwrap().iter().cloned().collect::<Vec<PressureInfo>>();
+//    transition.vmstat = HISTORY.vmstat.read().unwrap().iter().cloned().collect::<Vec<VmStatInfo>>();
+//}
 
 pub async fn single_statistic_u64(
     category: &str,

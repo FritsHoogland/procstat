@@ -5,7 +5,7 @@ use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
 use axum::{Router, routing::get};
 use log::info;
-use env_logger;
+//use env_logger;
 
 mod common;
 mod stat;
@@ -128,7 +128,7 @@ static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
 #[tokio::main]
 async fn main()
 {
-    env_logger::init();
+    //env_logger::init();
     info!("Start procstat");
     let timer = Instant::now();
     let args = Opts::parse();
