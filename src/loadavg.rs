@@ -14,7 +14,7 @@ use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZ
 use crate::{add_list_of_f64_data_to_statistics, add_list_of_u64_data_to_statistics};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct LoadavgInfo {
     pub timestamp: DateTime<Local>,
     pub load_1: f64,

@@ -13,7 +13,7 @@ use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct NetworkDeviceInfo {
     pub timestamp: DateTime<Local>,
     pub device_name: String,

@@ -4,8 +4,9 @@ use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
 use crate::{add_list_of_u64_data_to_statistics, add_list_of_option_u64_data_to_statistics};
 use crate::HISTORY;
+use log::debug;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct VmStatInfo {
     pub timestamp: DateTime<Local>,
     pub nr_free_pages: f64,
@@ -383,6 +384,7 @@ pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String)
         zswpout,
         nr_unstable,
     });
+    debug!("{:?}", HISTORY.vmstat.read().unwrap());
 }
 
 

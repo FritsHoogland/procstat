@@ -14,7 +14,7 @@ use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::add_list_of_u64_data_to_statistics;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CpuStat {
     pub timestamp: DateTime<Local>,
     pub user: f64,

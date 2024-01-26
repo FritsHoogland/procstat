@@ -14,7 +14,7 @@ use sysctl::{Ctl, Sysctl};
 use crate::pressure::pressure_memory_plot;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MemInfo {
     pub timestamp: DateTime<Local>,
     pub memfree: f64,
