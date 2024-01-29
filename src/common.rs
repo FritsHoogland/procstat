@@ -1,18 +1,19 @@
 use crate::stat::CpuStat;
-use crate::HISTORY;
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
 use log::debug;
-use std::env::current_dir;
-use std::fs::write;
-
-use crate::stat::{add_cpu_total_to_history, process_stat_data};
+use crate::stat::process_stat_data;
+use crate::stat::add_cpu_total_to_history;
 use crate::schedstat::process_schedstat_data;
-use crate::meminfo::{add_memory_to_history, MemInfo, process_meminfo_data};
-use crate::blockdevice::{add_blockdevices_to_history, BlockDeviceInfo, process_blockdevice_data};
-use crate::loadavg::{add_loadavg_to_history, LoadavgInfo, process_loadavg_data};
+use crate::meminfo::process_meminfo_data;
+use crate::meminfo::{add_memory_to_history, MemInfo};
+use crate::blockdevice::add_blockdevices_to_history;
+use crate::blockdevice::BlockDeviceInfo;
+use crate::blockdevice::process_blockdevice_data;
+use crate::loadavg::process_loadavg_data;
+use crate::loadavg::{add_loadavg_to_history, LoadavgInfo};
 use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data};
 use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};
 use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data};
@@ -121,7 +122,6 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
 }
 
 pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
-    // history management happens here
     add_cpu_total_to_history(statistics).await;
     add_memory_to_history(statistics).await;
     add_blockdevices_to_history(statistics).await;
@@ -129,39 +129,6 @@ pub async fn add_to_history(statistics: &HashMap<(String, String, String), Stati
     add_loadavg_to_history(statistics).await;
     add_pressure_to_history(statistics).await;
     add_vmstat_to_history(statistics).await;
-}
-
-pub fn save_history() {
-    let mut transition = HistoricalDataTransit::default();
-    transition.cpu = HISTORY.cpu.read().unwrap().iter().cloned().collect::<Vec<CpuStat>>();
-    transition.memory = HISTORY.memory.read().unwrap().iter().cloned().collect::<Vec<MemInfo>>();
-    transition.blockdevices = HISTORY.blockdevices.read().unwrap().iter().cloned().collect::<Vec<BlockDeviceInfo>>();
-    transition.networkdevices = HISTORY.networkdevices.read().unwrap().iter().cloned().collect::<Vec<NetworkDeviceInfo>>();
-    transition.loadavg = HISTORY.loadavg.read().unwrap().iter().cloned().collect::<Vec<LoadavgInfo>>();
-    transition.pressure = HISTORY.pressure.read().unwrap().iter().cloned().collect::<Vec<PressureInfo>>();
-    transition.vmstat = HISTORY.vmstat.read().unwrap().iter().cloned().collect::<Vec<VmStatInfo>>();
-
-    let current_directory = current_dir().unwrap();
-    let filename = current_directory.join("procstat.json");
-    write(filename, serde_json::to_string(&transition).unwrap()).unwrap();
-}
-
-pub fn read_history() {
-    let current_directory = current_dir().unwrap();
-    let filename = current_directory.join("procstat.json");
-    let transition: HistoricalDataTransit = serde_json::from_str(&std::fs::read_to_string(filename).unwrap()).unwrap_or_else(|e| panic!("{}", e));
-    //let mut cpu= HISTORY.cpu.write().unwrap();
-    //*cpu = transition.cpu.iter().cloned().collect::<Vec<CpuStat>>().into();
-    //*cpu = BoundedVecDeque::from(transition.cpu.try_into().unwrap())
-    transition.cpu.iter().for_each(|row| { HISTORY.cpu.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.memory.iter().for_each(|row| { HISTORY.memory.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.blockdevices.iter().for_each(|row| { HISTORY.blockdevices.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.networkdevices.iter().for_each(|row| { HISTORY.networkdevices.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.loadavg.iter().for_each(|row| { HISTORY.loadavg.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.pressure.iter().for_each(|row| { HISTORY.pressure.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    transition.vmstat.iter().for_each(|row| { HISTORY.vmstat.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
-    //transition.cpu.iter().for_each(|row| println!("{:?}", row));
-    //println!("{:?}", HISTORY);
 }
 
 pub async fn single_statistic_u64(

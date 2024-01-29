@@ -137,7 +137,7 @@ pub fn load_plot(
                 .unwrap();
             high_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .map(|pressure| pressure.$struct_field_name * 1.1_f64)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap();
             )*

@@ -393,12 +393,12 @@ fn cpu_total_plot(
     let low_value: f64 = 0.0;
     let high_value_cpu = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.user+cpustat.nice+cpustat.system+cpustat.iowait+cpustat.steal+cpustat.irq+cpustat.softirq+cpustat.idle)
+        .map(|cpustat| (cpustat.user+cpustat.nice+cpustat.system+cpustat.iowait+cpustat.steal+cpustat.irq+cpustat.softirq+cpustat.idle) * 1.1_f64 )
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_schedstat = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.scheduler_running+cpustat.scheduler_waiting)
+        .map(|cpustat| (cpustat.scheduler_running+cpustat.scheduler_waiting) * 1.1_f64 )
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value = vec![high_value_cpu, high_value_schedstat]

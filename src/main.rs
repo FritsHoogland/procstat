@@ -1,12 +1,15 @@
 use time::Duration;
-use tokio::time::{self, Instant};
-use std::{process, collections::HashMap};
+use tokio::time::{self, Instant, MissedTickBehavior};
+
+use std::collections::HashMap;
+use std::process;
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
 use axum::{Router, routing::get};
 use log::info;
 use env_logger;
 use std::sync::Arc;
+use chrono::Local;
 
 mod common;
 mod stat;
@@ -18,8 +21,11 @@ mod webserver;
 mod loadavg;
 mod pressure;
 mod vmstat;
+mod archiver;
 
-use common::{read_proc_data_and_process, Statistic, HistoricalData, save_history, read_history};
+use common::{read_proc_data_and_process, Statistic,};
+use common::HistoricalData;
+use archiver::{archive, reader};
 use stat::{print_all_cpu, print_per_cpu};
 use blockdevice::print_diskstats;
 use meminfo::print_meminfo;
@@ -101,18 +107,21 @@ pub struct Opts {
     /// History size
     #[arg(short = 's', long, value_name = "nr statistics", default_value = "10800")]
     history: usize,
-    /// Save history on termination
-    #[arg(short = 'S', long, value_name = "save history")]
-    save: bool,
-    /// Read history (only use file statistics, no active fetching)
-    #[arg(short = 'R', long, value_name = "read history")]
-    read: bool,
+    /// Read history (only read archives, no active fetching)
+    #[arg(short = 'r', long, value_name = "read archives")]
+    read: Option<String>,
     /// Enable webserver 
     #[arg(short = 'w', long, value_name = "enable webserver")]
     webserver: bool,
     /// Webserver port
     #[arg(short = 'P', long, value_name = "webserver port", default_value = "1111")]
     webserver_port: u64,
+    /// Enable archiver 
+    #[arg(short = 'A', long, value_name = "enable archiving")]
+    archiver: bool,
+    /// Deamon mode
+    #[arg(short = 'D', long, value_name = "daemon mode")]
+    deamon: bool,
 }
 
 static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
@@ -120,27 +129,25 @@ static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
 });
 
 #[tokio::main]
-async fn main()
-{
+async fn main() {
     env_logger::init();
     info!("Start procstat");
     let timer = Instant::now();
     let args = Opts::parse();
 
     ctrlc::set_handler(move || {
-        if args.save {
-            save_history();
+        if args.archiver {
+            archive(Local::now());
         }
         info!("End procstat, total time: {:?}", timer.elapsed());
         process::exit(0);
     }).unwrap();
 
-    // spawn the webserver thread
+    // spawn the webserver 
     if args.webserver {
         let port = Arc::new(args.webserver_port);
         let port_clone = Arc::clone(&port);
-        #[allow(clippy::let_underscore_future)]
-        let _ = tokio::spawn( async move {
+        tokio::spawn( async move {
             let app = Router::new()
                 .route("/handler/:plot_1/:plot_2", get(handler_html))
                 .route("/plotter/:plot_1/:plot_2", get(handler_plotter))
@@ -149,49 +156,56 @@ async fn main()
             axum::serve(listener, app.into_make_service()).await.unwrap();
         });
     }
+    // spawn the archiver; only linux
+    if args.archiver { tokio::spawn( async move { archiver::archiver().await; }); };
 
-    if args.read {
-        read_history();
+    if args.read.is_some() {
+        let reader_files = Arc::new(args.read.as_ref().unwrap());
+        let reader_files_clone = Arc::clone(&reader_files);
+        reader(reader_files_clone.to_string());
     }
 
     let mut interval = time::interval(Duration::from_secs(args.interval));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let mut current_statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
     let mut output_counter = 0_u64;
     loop
     {
         interval.tick().await;
-        if args.read { continue };
+        if args.read.is_some() { continue };
 
         read_proc_data_and_process(&mut current_statistics).await;
 
-        let print_header = output_counter % args.header_print == 0;
-        match args.output {
-            OutputOptions::SarU => print_all_cpu(&current_statistics, "sar-u", print_header).await,
-            OutputOptions::SarB => print_vmstat(&current_statistics, "sar-B", print_header).await,
-            OutputOptions::Sarb => print_diskstats(&current_statistics, "sar-b", print_header).await,
-            OutputOptions::SarUAll => print_all_cpu(&current_statistics, "sar-u-ALL", print_header).await,
-            OutputOptions::CpuAll => print_all_cpu(&current_statistics, "cpu-all", print_header).await,
-            OutputOptions::MpstatPAll => print_per_cpu(&current_statistics, "mpstat-P-ALL").await,
-            OutputOptions::PerCpuAll => print_per_cpu(&current_statistics, "per-cpu-all").await,
-            OutputOptions::SarD => print_diskstats(&current_statistics, "sar-d", print_header).await,
-            OutputOptions::Iostat => print_diskstats(&current_statistics, "iostat", print_header).await,
-            OutputOptions::IostatX => print_diskstats(&current_statistics, "iostat-x", print_header).await,
-            OutputOptions::SarH => print_meminfo(&current_statistics, "sar-H", print_header).await,
-            OutputOptions::SarR => print_meminfo(&current_statistics, "sar-r", print_header).await,
-            OutputOptions::SarRAll => print_meminfo(&current_statistics, "sar-r-ALL", print_header).await,
-            OutputOptions::SarNDev => print_net_dev(&current_statistics, "sar-n-DEV").await,
-            OutputOptions::SarNEdev => print_net_dev(&current_statistics, "sar-n-EDEV").await,
-            OutputOptions::SarQCpu => print_psi(&current_statistics, "sar-q-CPU", print_header).await,
-            OutputOptions::SarQLoad => print_loadavg(&current_statistics, "sar-q-LOAD", print_header).await,
-            OutputOptions::SarQIo => print_psi(&current_statistics, "sar-q-IO", print_header).await,
-            OutputOptions::SarQMem => print_psi(&current_statistics, "sar-q-MEM", print_header).await,
-            OutputOptions::SarQ => print_loadavg(&current_statistics, "sar-q-LOAD", print_header).await,
-            OutputOptions::SarS => print_meminfo(&current_statistics, "sar-S", print_header).await,
-            OutputOptions::SarW => print_vmstat(&current_statistics, "sar-W", print_header).await,
-            OutputOptions::Sarw => print_all_cpu(&current_statistics, "sar-w", print_header).await,
-            OutputOptions::Vmstat => print_vmstat(&current_statistics, "vmstat", print_header).await,
+        if ! args.deamon {
+            let print_header = output_counter % args.header_print == 0;
+            match args.output {
+                OutputOptions::SarU => print_all_cpu(&current_statistics, "sar-u", print_header).await,
+                OutputOptions::SarB => print_vmstat(&current_statistics, "sar-B", print_header).await,
+                OutputOptions::Sarb => print_diskstats(&current_statistics, "sar-b", print_header).await,
+                OutputOptions::SarUAll => print_all_cpu(&current_statistics, "sar-u-ALL", print_header).await,
+                OutputOptions::CpuAll => print_all_cpu(&current_statistics, "cpu-all", print_header).await,
+                OutputOptions::MpstatPAll => print_per_cpu(&current_statistics, "mpstat-P-ALL").await,
+                OutputOptions::PerCpuAll => print_per_cpu(&current_statistics, "per-cpu-all").await,
+                OutputOptions::SarD => print_diskstats(&current_statistics, "sar-d", print_header).await,
+                OutputOptions::Iostat => print_diskstats(&current_statistics, "iostat", print_header).await,
+                OutputOptions::IostatX => print_diskstats(&current_statistics, "iostat-x", print_header).await,
+                OutputOptions::SarH => print_meminfo(&current_statistics, "sar-H", print_header).await,
+                OutputOptions::SarR => print_meminfo(&current_statistics, "sar-r", print_header).await,
+                OutputOptions::SarRAll => print_meminfo(&current_statistics, "sar-r-ALL", print_header).await,
+                OutputOptions::SarNDev => print_net_dev(&current_statistics, "sar-n-DEV").await,
+                OutputOptions::SarNEdev => print_net_dev(&current_statistics, "sar-n-EDEV").await,
+                OutputOptions::SarQCpu => print_psi(&current_statistics, "sar-q-CPU", print_header).await,
+                OutputOptions::SarQLoad => print_loadavg(&current_statistics, "sar-q-LOAD", print_header).await,
+                OutputOptions::SarQIo => print_psi(&current_statistics, "sar-q-IO", print_header).await,
+                OutputOptions::SarQMem => print_psi(&current_statistics, "sar-q-MEM", print_header).await,
+                OutputOptions::SarQ => print_loadavg(&current_statistics, "sar-q-LOAD", print_header).await,
+                OutputOptions::SarS => print_meminfo(&current_statistics, "sar-S", print_header).await,
+                OutputOptions::SarW => print_vmstat(&current_statistics, "sar-W", print_header).await,
+                OutputOptions::Sarw => print_all_cpu(&current_statistics, "sar-w", print_header).await,
+                OutputOptions::Vmstat => print_vmstat(&current_statistics, "vmstat", print_header).await,
+            }
+            output_counter += 1;
         }
-        output_counter += 1;
     }
 }
