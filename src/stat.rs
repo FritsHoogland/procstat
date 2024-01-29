@@ -13,6 +13,8 @@ use crate::pressure::pressure_cpu_some_plot;
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::add_list_of_u64_data_to_statistics;
 use serde::{Serialize, Deserialize};
+use log::debug;
+use proc_sys_parser::stat::ProcStat;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CpuStat {
@@ -30,8 +32,14 @@ pub struct CpuStat {
     pub scheduler_running: f64,
     pub scheduler_waiting: f64,
 }
-pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+
+pub async fn read_stat_proc_data() -> ProcStat {
+    let proc_stat = proc_sys_parser::stat::read();
+    debug!("{:?}", proc_stat);
+    proc_stat
+}
+
+pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
     process_cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
     for cpu_stat in &proc_data.stat.cpu_individual {
         process_cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await;
@@ -41,8 +49,7 @@ pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(S
     single_statistic_u64("stat", "", "softirq_total", proc_data.timestamp, proc_data.stat.softirq.first().cloned().unwrap(), statistics).await;
 }
 
-pub async fn process_cpu_statistics(cpu_data: &proc_sys_parser::stat::CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_cpu_statistics(cpu_data: &proc_sys_parser::stat::CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String, String), Statistic>) {
     let cpu_name = match cpu_data.name.as_str()
     {
         "cpu" => "all",

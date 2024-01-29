@@ -1,10 +1,12 @@
 use std::collections::{BTreeSet, HashMap};
+use log::debug;
 use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::{*, full_palette::PURPLE};
+use proc_sys_parser::block::SysBlock;
 use serde::{Serialize, Deserialize};
 
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64};
@@ -39,6 +41,12 @@ pub struct BlockDeviceInfo {
     pub queue_max_sectors_kb: f64,
     pub queue_max_hw_sectors_kb: f64,
     pub queue_nr_requests: f64,
+}
+
+pub async fn read_blockdevice_sys_data() -> SysBlock {
+    let sys_block = proc_sys_parser::block::read();
+    debug!("{:?}", sys_block);
+    sys_block
 }
 
 pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)

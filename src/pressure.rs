@@ -1,6 +1,7 @@
 #![allow(unused_assignments)]
 
 use std::collections::HashMap;
+use log::debug;
 use chrono::{DateTime, Local};
 use plotters::prelude::*;
 use plotters::prelude::full_palette::{BLUE_A100, RED_A100};
@@ -11,6 +12,7 @@ use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
 use plotters::style::full_palette::{BLUE_900, BLUE_500, RED_A400, RED_900, RED_200, BLUE_100};
+use proc_sys_parser::pressure::ProcPressure;
 use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_f64, single_statistic_option_u64, single_statistic_option_f64};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
@@ -42,6 +44,12 @@ pub struct PressureInfo {
     pub memory_full_avg60: f64,
     pub memory_full_avg300: f64,
     pub memory_full_total: f64,
+}
+
+pub async fn read_pressure_proc_data() -> ProcPressure {
+    let proc_pressure = proc_sys_parser::pressure::read();
+    debug!("{:?}", proc_pressure);
+    proc_pressure
 }
 
 pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {

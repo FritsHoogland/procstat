@@ -1,12 +1,14 @@
 #![allow(unused_assignments)]
 
 use std::collections::{BTreeSet, HashMap};
+use log::debug;
 use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
+use proc_sys_parser::net_dev::ProcNetDev;
 use serde::{Serialize, Deserialize};
 //
 use crate::common::{ProcData, single_statistic_u64, Statistic};
@@ -33,6 +35,12 @@ pub struct NetworkDeviceInfo {
     pub transmit_collisions: f64,
     pub transmit_carrier: f64,
     pub transmit_compressed: f64,
+}
+
+pub async fn read_netdev_proc_data() -> ProcNetDev {
+    let proc_netdev = proc_sys_parser::net_dev::read();
+    debug!("{:?}", proc_netdev);
+    proc_netdev
 }
 
 pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)

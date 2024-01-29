@@ -1,5 +1,13 @@
 use std::collections::HashMap;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
+use log::debug;
+use proc_sys_parser::schedstat::ProcSchedStat;
+
+pub async fn read_schedstat_proc_data() -> ProcSchedStat {
+    let proc_schedstat = proc_sys_parser::schedstat::read();
+    debug!("{:?}", proc_schedstat);
+    proc_schedstat
+}
 
 pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
 {

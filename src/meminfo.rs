@@ -1,4 +1,5 @@
 use chrono::{DateTime, Local};
+use proc_sys_parser::meminfo::ProcMemInfo;
 use std::collections::HashMap;
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
@@ -13,6 +14,7 @@ use crate::add_list_of_u64_data_to_statistics;
 use sysctl::{Ctl, Sysctl};
 use crate::pressure::pressure_memory_plot;
 use serde::{Serialize, Deserialize};
+use log::debug;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct MemInfo {
@@ -34,6 +36,12 @@ pub struct MemInfo {
     pub hugepages_total: f64,
     pub hugepages_free: f64,
     pub hugepagesize: f64,
+}
+
+pub async fn read_meminfo_proc_data() -> ProcMemInfo {
+    let proc_meminfo = proc_sys_parser::meminfo::read();
+    debug!("{:?}", proc_meminfo);
+    proc_meminfo
 }
 
 pub async fn process_meminfo_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {

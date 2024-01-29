@@ -1,4 +1,5 @@
 use chrono::{DateTime, Local};
+use proc_sys_parser::vmstat::ProcVmStat;
 use std::collections::{HashMap, BTreeSet};
 use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
@@ -185,6 +186,12 @@ pub struct VmStatInfo {
     pub zswpin: f64,
     pub zswpout: f64,
     pub nr_unstable: f64,
+}
+
+pub async fn read_vmstat_proc_data() -> ProcVmStat {
+    let proc_vmstat = proc_sys_parser::vmstat::read();
+    debug!("{:?}", proc_vmstat);
+    proc_vmstat
 }
 
 pub async fn process_vmstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {

@@ -3,20 +3,14 @@ use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
-use log::debug;
-use crate::stat::process_stat_data;
-use crate::stat::add_cpu_total_to_history;
-use crate::schedstat::process_schedstat_data;
-use crate::meminfo::process_meminfo_data;
-use crate::meminfo::{add_memory_to_history, MemInfo};
-use crate::blockdevice::add_blockdevices_to_history;
-use crate::blockdevice::BlockDeviceInfo;
-use crate::blockdevice::process_blockdevice_data;
-use crate::loadavg::process_loadavg_data;
-use crate::loadavg::{add_loadavg_to_history, LoadavgInfo};
-use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data};
-use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data};
-use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data};
+use crate::stat::{process_stat_data, add_cpu_total_to_history, read_stat_proc_data};
+use crate::schedstat::{process_schedstat_data, read_schedstat_proc_data};
+use crate::meminfo::{process_meminfo_data, read_meminfo_proc_data, add_memory_to_history, MemInfo};
+use crate::blockdevice::{add_blockdevices_to_history, read_blockdevice_sys_data, BlockDeviceInfo, process_blockdevice_data};
+use crate::loadavg::{process_loadavg_data, read_loadavg_proc_data, add_loadavg_to_history, LoadavgInfo};
+use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data, read_pressure_proc_data};
+use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data, read_netdev_proc_data};
+use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data, read_vmstat_proc_data};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug)]
@@ -79,22 +73,14 @@ pub struct HistoricalDataTransit {
 
 pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) {
     let timestamp = Local::now();
-    let proc_stat = proc_sys_parser::stat::read();
-    debug!("Stat: {:?}", proc_stat);
-    let proc_schedstat = proc_sys_parser::schedstat::read();
-    debug!("Schedstat: {:?}", proc_schedstat);
-    let proc_meminfo = proc_sys_parser::meminfo::read();
-    debug!("Meminfo: {:?}", proc_meminfo);
-    let sys_block_devices = proc_sys_parser::block::read();
-    debug!("Block: {:?}", sys_block_devices);
-    let proc_netdev = proc_sys_parser::net_dev::read();
-    debug!("Netdev: {:?}", proc_netdev);
-    let proc_loadavg = proc_sys_parser::loadavg::read();
-    debug!("Loadavg: {:?}", proc_loadavg);
-    let proc_pressure = proc_sys_parser::pressure::read();
-    debug!("Pressure: {:?}", proc_pressure);
-    let proc_vmstat = proc_sys_parser::vmstat::read();
-    debug!("Vmstat: {:?}", proc_vmstat);
+    let proc_stat = read_stat_proc_data().await;
+    let proc_schedstat = read_schedstat_proc_data().await;
+    let proc_meminfo = read_meminfo_proc_data().await;
+    let sys_block_devices = read_blockdevice_sys_data().await;
+    let proc_netdev = read_netdev_proc_data().await;
+    let proc_loadavg = read_loadavg_proc_data().await;
+    let proc_pressure = read_pressure_proc_data().await;
+    let proc_vmstat = read_vmstat_proc_data().await;
     let proc_data = ProcData {
         timestamp,
         stat: proc_stat,

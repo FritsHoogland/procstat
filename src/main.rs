@@ -96,7 +96,7 @@ enum OutputOptions
 #[clap(version, about, long_about = None)]
 pub struct Opts {
     /// Interval
-    #[arg(short = 'i', long, value_name = "time (s)", default_value = "1")]
+    #[arg(short = 'i', long, value_name = "time (s)", default_value = "5")]
     interval: u64,
     /// Output
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
