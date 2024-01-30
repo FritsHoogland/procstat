@@ -319,12 +319,12 @@ pub fn pressure_cpu_some_plot(
         .iter()
         .map(|pressure| pressure.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .map(|pressure| pressure.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -335,12 +335,12 @@ pub fn pressure_cpu_some_plot(
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             )*
         };
     }

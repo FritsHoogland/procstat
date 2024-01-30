@@ -102,7 +102,7 @@ pub struct Opts {
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
     output: OutputOptions,
     /// Print header
-    #[arg(short = 'n', long, value_name = "nr", default_value = "30")]
+    #[arg(short = 'n', long, value_name = "print header interval (rows)", default_value = "30")]
     header_print: u64,
     /// History size
     #[arg(short = 's', long, value_name = "nr statistics", default_value = "10800")]
@@ -122,6 +122,9 @@ pub struct Opts {
     /// Deamon mode
     #[arg(short = 'D', long, value_name = "daemon mode")]
     deamon: bool,
+    /// archiver interval minutes
+    #[arg(short = 'I', long, value_name = "archiver interval (minutes)", default_value = "10")]
+    archiver_interval: i64,
 }
 
 static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
@@ -137,7 +140,7 @@ async fn main() {
 
     ctrlc::set_handler(move || {
         if args.archiver {
-             archive(Local::now());
+             archive(Local::now(), args.archiver_interval);
         }
         info!("End procstat, total time: {:?}", timer.elapsed());
         process::exit(0);
@@ -157,7 +160,11 @@ async fn main() {
         });
     }
     // spawn the archiver; only linux
-    if args.archiver { tokio::spawn( async move { archiver::archiver().await }); };
+    if args.archiver { 
+        tokio::spawn( async move { 
+            archiver::archiver(args.archiver_interval).await 
+        }); 
+    };
 
     if args.read.is_some() {
         let reader_files = Arc::new(args.read.as_ref().unwrap());

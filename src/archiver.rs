@@ -17,26 +17,26 @@ use std::env::current_dir;
 use std::path::Path;
 use std::fs::write;
 
-pub async fn archiver() {
+pub async fn archiver(archiver_interval: i64) {
     let mut interval = time::interval(TokioDuration::from_secs(60));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut archive_time = Local::now().duration_trunc(Duration::minutes(10)).unwrap()+Duration::minutes(10);
+    let mut archive_time = Local::now().duration_trunc(Duration::minutes(archiver_interval)).unwrap()+Duration::minutes(archiver_interval);
     debug!("begin: time: archive_time: {:?}, current_time: {:?}", archive_time, Local::now());
     loop {
         interval.tick().await;
 
         debug!("archiver tick");
         if Local::now() > archive_time {
-            archive(archive_time);
-            archive_time += Duration::minutes(10);
+            archive(archive_time, archiver_interval);
+            archive_time += Duration::minutes(archiver_interval);
             debug!("new archive_time: {:?}", archive_time);
         };
     }
 }
-pub fn archive(high_time: DateTime<Local>) {
+pub fn archive(high_time: DateTime<Local>, archiver_interval: i64) {
     let mut transition = HistoricalDataTransit::default();
-    let low_time = high_time-Duration::minutes(10);
-    debug!("archive times: low: {:?}, high {:?}", low_time, high_time);
+    let low_time = high_time-Duration::minutes(archiver_interval);
+    debug!("archive times: low: {:?}, high {:?}, interval: {:?}", low_time, high_time, archiver_interval);
 
     transition.cpu = HISTORY.cpu.read().unwrap().iter().filter(|cpustat| cpustat.timestamp > low_time && cpustat.timestamp <= high_time).cloned().collect::<Vec<CpuStat>>();
     transition.memory = HISTORY.memory.read().unwrap().iter().filter(|memory| memory.timestamp > low_time && memory.timestamp <= high_time).cloned().collect::<Vec<MemInfo>>();

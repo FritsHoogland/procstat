@@ -1312,7 +1312,7 @@ dependencies = [
 
 [[package]]
 name = "procstat"
-version = "0.1.14"
+version = "0.1.15"
 dependencies = [
  "axum",
  "bounded-vec-deque",
