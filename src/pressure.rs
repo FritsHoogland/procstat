@@ -352,8 +352,7 @@ pub fn pressure_cpu_some_plot(
 
     let high_value_all_avg = high_value.cpu_some_avg10.max(high_value.cpu_some_avg60).max(high_value.cpu_some_avg300);
     let latest = historical_data_read
-        .back()
-        .unwrap();
+        .back();
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -382,10 +381,11 @@ pub fn pressure_cpu_some_plot(
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.cpu_some_total)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+    //let latest_cpu_some_total = latest.map_or(0_f64, |latest| latest.cpu_some_total);
     // total
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.cpu_some_total / 1_000_000_f64)), 0.0, BLUE_A100))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "cpu_some_total", low_value.cpu_some_total, high_value.cpu_some_total, latest.cpu_some_total / 1_000_000_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "cpu_some_total", low_value.cpu_some_total, high_value.cpu_some_total, latest.map_or(0_f64, |latest| latest.cpu_some_total) / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
     macro_rules! draw_lineseries_on_secondary_axes {
@@ -393,7 +393,7 @@ pub fn pressure_cpu_some_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
@@ -419,12 +419,12 @@ pub fn pressure_memory_plot(
         .iter()
         .map(|pressure| pressure.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .map(|pressure| pressure.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -435,12 +435,12 @@ pub fn pressure_memory_plot(
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             )*
         };
     }
@@ -453,8 +453,7 @@ pub fn pressure_memory_plot(
     let high_value_all_avg = [ high_value.memory_some_avg10, high_value.memory_some_avg60, high_value.memory_some_avg300, high_value.memory_full_avg10, high_value.memory_full_avg60, high_value.memory_full_avg300].into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let high_value_all_total = high_value.memory_some_total.max(high_value.memory_full_total);
     let latest = historical_data_read
-        .back()
-        .unwrap();
+        .back();
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -486,7 +485,7 @@ pub fn pressure_memory_plot(
     // some total
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.memory_some_total / 1_000_000_f64)), 0.0, BLUE_A100))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_some_total", low_value.memory_some_total, high_value.memory_some_total, latest.memory_some_total / 1_000_000_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_some_total", low_value.memory_some_total, high_value.memory_some_total, latest.map_or(0_f64, |latest| latest.memory_some_total) / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
     macro_rules! draw_lineseries_on_secondary_axes {
@@ -494,7 +493,7 @@ pub fn pressure_memory_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
@@ -503,7 +502,7 @@ pub fn pressure_memory_plot(
     // full total
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.memory_full_total / 1_000_000_f64)), 0.0, RED_A100))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_full_total", low_value.memory_full_total, high_value.memory_full_total, latest.memory_full_total / 1_000_000_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory_full_total", low_value.memory_full_total, high_value.memory_full_total, latest.map_or(0_f64, |latest| latest.memory_full_total) / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED_A100.filled()));
 
     draw_lineseries_on_secondary_axes!([memory_full_avg10, RED_900], [memory_full_avg60, RED_A400], [memory_full_avg300, RED_200]);
@@ -527,12 +526,12 @@ pub fn pressure_io_plot(
         .iter()
         .map(|pressure| pressure.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .map(|pressure| pressure.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -543,12 +542,12 @@ pub fn pressure_io_plot(
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
                 .map(|pressure| pressure.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .unwrap_or_default();
             )*
         };
     }
@@ -561,8 +560,7 @@ pub fn pressure_io_plot(
     let high_value_all_avg = [ high_value.io_some_avg10, high_value.io_some_avg60, high_value.io_some_avg300, high_value.io_full_avg10, high_value.io_full_avg60, high_value.io_full_avg300].into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let high_value_all_total = high_value.io_some_total.max(high_value.io_full_total);
     let latest = historical_data_read
-        .back()
-        .unwrap();
+        .back();
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -599,7 +597,7 @@ pub fn pressure_io_plot(
             .iter()
             .map(|pressure| (pressure.timestamp, pressure.io_some_total / 1_000_000_f64)), 0.0, BLUE_A100))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_some_total", low_value.io_some_total, high_value.io_some_total, latest.io_some_total / 1_000_000_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_some_total", low_value.io_some_total, high_value.io_some_total, latest.map_or(0_f64, |latest| latest.io_some_total) / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE_A100.filled()));
 
     macro_rules! draw_lineseries_on_secondary_axes {
@@ -607,7 +605,7 @@ pub fn pressure_io_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
@@ -616,7 +614,7 @@ pub fn pressure_io_plot(
 
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.io_full_total / 1_000_000_f64)), 0.0, RED_A100))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_full_total", low_value.io_full_total, high_value.io_full_total, latest.io_full_total / 1_000_000_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "io_full_total", low_value.io_full_total, high_value.io_full_total, latest.map_or(0_f64, |latest| latest.io_full_total) / 1_000_000_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED_A100.filled()));
 
     draw_lineseries_on_secondary_axes!([io_full_avg10, RED_900], [io_full_avg60, RED_A400], [io_full_avg300, RED_200]);

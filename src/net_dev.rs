@@ -462,7 +462,7 @@ fn networkdevice_packet_plot(
                                                 .filter(|networkdevice| networkdevice.device_name == device_name)
                                                 .map(|networkdevice| (networkdevice.timestamp, networkdevice.transmit_packets + networkdevice.receive_packets)), BLACK))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "transmit", min_total_packets, max_total_packets, (latest.transmit_packets + latest.receive_packets)))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_packets, max_total_packets, (latest.transmit_packets + latest.receive_packets)))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
     // transmit packets
     let min_transmit_packets = historical_data_read
@@ -478,7 +478,7 @@ fn networkdevice_packet_plot(
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea.draw_series(historical_data_read.iter()
-                                                .filter(|networkdevice| networkdevice.device_name == device_name)
+                                                .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.transmit_packets > 0_f64)
                                                 .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.transmit_packets), 4, RED.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "transmit", min_transmit_packets, max_transmit_packets, latest.transmit_packets))
@@ -498,7 +498,7 @@ fn networkdevice_packet_plot(
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea.draw_series(historical_data_read.iter()
-                                                .filter(|networkdevice| networkdevice.device_name == device_name)
+                                                .filter(|networkdevice| networkdevice.device_name == device_name && networkdevice.receive_packets > 0_f64)
                                                 .map(|networkdevice| Circle::new((networkdevice.timestamp, networkdevice.receive_packets), 3, GREEN.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "receive", min_receive_packets, max_receive_packets, latest.receive_packets))
