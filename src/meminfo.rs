@@ -320,7 +320,11 @@ fn memory_plot(
     let latest = historical_data_read
         .back()
         .unwrap();
-    let min_free_kbytes: f64 = Ctl::new("vm.min_free_kbytes").unwrap().description().unwrap_or_default().parse::<f64>().unwrap_or_default();
+    //let min_free_kbytes: f64 = Ctl::new("vm.min_free_kbytes").unwrap().description().unwrap_or_default().parse::<f64>().unwrap_or_default();
+    let min_free_kbytes: f64 = match Ctl::new("vm.min_free_kbytes") {
+        Ok(value) => value.description().unwrap_or_default().parse::<f64>().unwrap_or_default(),
+        Err(_) => 0_f64,
+    };
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -480,13 +484,14 @@ fn memory_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memavailable", min_memavailable/1024_f64, max_memavailable/1024_f64, latest.memavailable / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
-    //
-    // min_free_kbytes / pages_min
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, min_free_kbytes / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
-    // pages_low
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/4_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
-    // pages_high
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/2_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+    if min_free_kbytes != 0_f64 {
+        // min_free_kbytes / pages_min
+        contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, min_free_kbytes / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+        // pages_low
+        contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/4_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+        // pages_high
+        contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/2_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+    }
     //
     // draw the legend
     contextarea.configure_series_labels()
