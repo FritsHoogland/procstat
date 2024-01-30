@@ -1,10 +1,17 @@
 use chrono::{DateTime, Local};
+use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use plotters::backend::{BitMapBackend, RGBPixel};
+use plotters::chart::{ChartBuilder, LabelAreaPosition};
+use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::coord::Shift;
+use plotters::drawing::DrawingArea;
+use plotters::element::Rectangle;
+use plotters::prelude::*;
 use proc_sys_parser::vmstat::ProcVmStat;
 use std::collections::{HashMap, BTreeSet};
 use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
 use crate::{add_list_of_u64_data_to_statistics, add_list_of_option_u64_data_to_statistics};
-use crate::HISTORY;
 use log::debug;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -551,4 +558,117 @@ pub async fn print_vmstat(statistics: &HashMap<(String, String, String), Statist
         }
         &_ => todo!{},
     }
+}
+
+pub fn swap_inout_plot(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+)
+{
+    let historical_data_read = HISTORY.vmstat.read().unwrap();
+    let start_time = historical_data_read
+        .iter()
+        .map(|vmstat| vmstat.timestamp)
+        .min()
+        .unwrap();
+    let end_time = historical_data_read
+        .iter()
+        .map(|vmstat| vmstat.timestamp)
+        .max()
+        .unwrap();
+    let latest = historical_data_read
+        .back()
+        .unwrap();
+    let high_value = historical_data_read
+        .iter()
+        .map(|vmstat| (vmstat.pswpin + vmstat.pswpout) * 1.1_f64 )
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+
+    // create the plot
+    multi_backend[backend_number].fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption("Swap IO", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .unwrap();
+    contextarea.configure_mesh()
+        .x_labels(6)
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_desc("Time")
+        .y_desc("Swap IO (pages)")
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|vmstat| (vmstat.timestamp, vmstat.pswpin)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+        .unwrap()
+        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+     
+    //
+    let min_total_swap = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpin + vmstat.pswpout > 0_f64)
+        .map(|vmstat| vmstat.pswpin + vmstat.pswpout)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_total_swap = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpin + vmstat.pswpout > 0_f64)
+        .map(|vmstat| vmstat.pswpin + vmstat.pswpout)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
+                                                .map(|vmstat| (vmstat.timestamp, vmstat.pswpin + vmstat.pswpout)), BLACK))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_swap, max_total_swap, (latest.pswpin + latest.pswpout)))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // pgspout
+    let min_pswpout = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpout > 0_f64)
+        .map(|vmstat| vmstat.pswpout)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_pswpout = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpout > 0_f64)
+        .map(|vmstat| vmstat.pswpout)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|vmstat| vmstat.pswpout > 0_f64)
+                                                .map(|vmstat| Circle::new((vmstat.timestamp, vmstat.pswpout), 4, RED.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pages swap out", min_pswpout, max_pswpout, latest.pswpout))
+        .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
+    // pgspin
+    let min_pswpin = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpin > 0_f64)
+        .map(|vmstat| vmstat.pswpin)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_pswpin = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pswpin > 0_f64)
+        .map(|vmstat| vmstat.pswpin)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|vmstat| vmstat.pswpin > 0_f64)
+                                                .map(|vmstat| Circle::new((vmstat.timestamp, vmstat.pswpin), 3, GREEN.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pages swap in", min_pswpin, max_pswpin, latest.pswpin))
+        .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
+    // draw the legend
+    contextarea.configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
 }

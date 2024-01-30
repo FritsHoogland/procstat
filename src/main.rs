@@ -96,7 +96,7 @@ enum OutputOptions
 #[clap(version, about, long_about = None)]
 pub struct Opts {
     /// Interval
-    #[arg(short = 'i', long, value_name = "time (s)", default_value = "5")]
+    #[arg(short = 'i', long, value_name = "time (s)", default_value = "1")]
     interval: u64,
     /// Output
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
@@ -137,7 +137,7 @@ async fn main() {
 
     ctrlc::set_handler(move || {
         if args.archiver {
-            archive(Local::now());
+             archive(Local::now());
         }
         info!("End procstat, total time: {:?}", timer.elapsed());
         process::exit(0);
@@ -157,7 +157,7 @@ async fn main() {
         });
     }
     // spawn the archiver; only linux
-    if args.archiver { tokio::spawn( async move { archiver::archiver().await; }); };
+    if args.archiver { tokio::spawn( async move { archiver::archiver().await }); };
 
     if args.read.is_some() {
         let reader_files = Arc::new(args.read.as_ref().unwrap());

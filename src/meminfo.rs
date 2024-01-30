@@ -8,6 +8,7 @@ use plotters::prelude::*;
 use plotters::prelude::{AreaSeries, BLACK, LineSeries, Palette99, RED, ShapeStyle, TRANSPARENT, WHITE};
 use plotters::prelude::full_palette::LIGHTGREEN;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
+use crate::vmstat::swap_inout_plot;
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::add_list_of_u64_data_to_statistics;
@@ -36,6 +37,8 @@ pub struct MemInfo {
     pub hugepages_total: f64,
     pub hugepages_free: f64,
     pub hugepagesize: f64,
+    pub swaptotal: f64,
+    pub swapfree: f64,
 }
 
 pub async fn read_meminfo_proc_data() -> ProcMemInfo {
@@ -229,6 +232,8 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
     let hugepages_total = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_total".to_string())).unwrap().last_value;
     let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string())).unwrap().last_value;
     let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string())).unwrap().last_value;
+    let swaptotal = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string())).unwrap().last_value;
+    let swapfree = statistics.get(&("meminfo".to_string(), "".to_string(), "swapfree".to_string())).unwrap().last_value;
     HISTORY.memory.write().unwrap().push_back( MemInfo {
         timestamp,
         memfree,
@@ -248,6 +253,8 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
         hugepages_total,
         hugepages_free,
         hugepagesize,
+        swaptotal,
+        swapfree,
     });
 }
 
@@ -271,6 +278,23 @@ pub fn create_memory_psi_plot(
     pressure_memory_plot(&mut multi_backend, 1);
 }
 
+pub fn create_memory_swap_plot( buffer: &mut [u8]) {
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((2, 1));
+    memory_plot(&mut multi_backend, 0);
+    swap_space_plot(&mut multi_backend, 1);
+}
+
+pub fn create_memory_swap_inout_plot(
+    buffer: &mut [u8]
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let mut multi_backend = backend.split_evenly((3, 1));
+    memory_plot(&mut multi_backend, 0);
+    swap_inout_plot(&mut multi_backend, 1);
+    swap_space_plot(&mut multi_backend, 2);
+}
 fn memory_plot(
     multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
@@ -463,6 +487,81 @@ fn memory_plot(
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/4_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
     // pages_high
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/2_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
+    //
+    // draw the legend
+    contextarea.configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+}
+
+fn swap_space_plot(
+    multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+)
+{
+    let historical_data_read = HISTORY.memory.read().unwrap();
+    let start_time = historical_data_read
+        .iter()
+        .map(|meminfo| meminfo.timestamp)
+        .min()
+        .unwrap();
+    let end_time = historical_data_read
+        .iter()
+        .map(|meminfo| meminfo.timestamp)
+        .max()
+        .unwrap();
+    let low_value: f64 = 0.0;
+    let high_value = historical_data_read
+        .iter()
+        .map(|meminfo| (meminfo.swaptotal * 1.1_f64) / 1024_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    let latest = historical_data_read
+        .back()
+        .unwrap();
+
+    // create the plot
+    multi_backend[backend_number].fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption("Swap usage", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .unwrap();
+    contextarea.configure_mesh()
+        .x_labels(6)
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_desc("Time")
+        .y_desc("Swap MB")
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    //
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|meminfo| (meminfo.timestamp, meminfo.swaptotal)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+        .unwrap()
+        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+    //
+    // memory total; this is the total limit, so it doesn't need to be stacked.
+    let min_swap_total = historical_data_read.iter().map(|meminfo| meminfo.swaptotal).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let max_swap_total = historical_data_read.iter().map(|meminfo| meminfo.swaptotal).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, meminfo.swaptotal/1024_f64)), 0.0, GREEN))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory total", min_swap_total/1024_f64, max_swap_total/1024_f64, latest.swaptotal/1024_f64))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+    //
+    // memory used
+    let min_swap_used = historical_data_read.iter().map(|meminfo| meminfo.swaptotal - meminfo.swapfree).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let max_swap_used = historical_data_read.iter().map(|meminfo| meminfo.swaptotal - meminfo.swapfree).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.swaptotal-meminfo.swapfree)/1024_f64)), 0.0, RED))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory used", min_swap_used/1024_f64, max_swap_used/1024_f64, (latest.swaptotal-latest.swapfree)/1024_f64))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
     //
     // draw the legend
     contextarea.configure_series_labels()
