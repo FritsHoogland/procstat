@@ -71,7 +71,7 @@ pub struct HistoricalDataTransit {
     pub vmstat: Vec<VmStatInfo>,
 }
 
-pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) {
+pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>, webserver: bool, archiver: bool) {
     let timestamp = Local::now();
     let proc_stat = read_stat_proc_data().await;
     let proc_schedstat = read_schedstat_proc_data().await;
@@ -93,7 +93,9 @@ pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String
         vmstat: proc_vmstat,
     };
     process_data(proc_data, statistics).await;
-    add_to_history(statistics).await;
+    if webserver || archiver {
+        add_to_history(statistics).await;
+    }
 }
 
 pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {

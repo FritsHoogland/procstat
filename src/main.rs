@@ -10,6 +10,14 @@ use log::info;
 use env_logger;
 use std::sync::Arc;
 use chrono::Local;
+#[cfg(feature = "mem-debug")]
+use alloc_track::{AllocTrack, BacktraceMode};
+#[cfg(feature = "mem-debug")]
+use std::alloc::System;
+
+#[cfg(feature = "mem-debug")]
+#[global_allocator]
+static GLOBALALLOC: AllocTrack<System> = AllocTrack::new(System, BacktraceMode::Short);
 
 mod common;
 mod stat;
@@ -98,6 +106,9 @@ pub struct Opts {
     /// Interval
     #[arg(short = 'i', long, value_name = "time (s)", default_value = "1")]
     interval: u64,
+    /// run Until
+    #[arg(short = 'u', long, value_name = "run until cycle nr")]
+    until: Option<u64>,
     /// Output
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
     output: OutputOptions,
@@ -142,7 +153,14 @@ async fn main() {
         if args.archiver {
              archive(Local::now(), args.archiver_interval);
         }
+        //info!("Size of HISTORY: {}", HistoricalData.get_heap_size());
         info!("End procstat, total time: {:?}", timer.elapsed());
+
+        #[cfg(feature = "mem-debug")] {
+            let report = alloc_track::thread_report();
+            println!("{report}");
+        }
+
         process::exit(0);
     }).unwrap();
 
@@ -182,7 +200,7 @@ async fn main() {
         interval.tick().await;
         if args.read.is_some() { continue };
 
-        read_proc_data_and_process(&mut current_statistics).await;
+        read_proc_data_and_process(&mut current_statistics, args.webserver, args.archiver).await;
 
         if ! args.deamon {
             let print_header = output_counter % args.header_print == 0;
@@ -213,6 +231,14 @@ async fn main() {
                 OutputOptions::Vmstat => print_vmstat(&current_statistics, "vmstat", print_header).await,
             }
             output_counter += 1;
+
+            if let Some(until) = args.until {
+                if until < output_counter { break };
+            };
         }
+    }
+    #[cfg(feature = "mem-debug")] {
+        let report = alloc_track::thread_report();
+        println!("{report}");
     }
 }

@@ -320,7 +320,6 @@ fn memory_plot(
     let latest = historical_data_read
         .back()
         .unwrap();
-    //let min_free_kbytes: f64 = Ctl::new("vm.min_free_kbytes").unwrap().description().unwrap_or_default().parse::<f64>().unwrap_or_default();
     let min_free_kbytes: f64 = match Ctl::new("vm.min_free_kbytes") {
         Ok(value) => value.description().unwrap_or_default().parse::<f64>().unwrap_or_default(),
         Err(_) => 0_f64,

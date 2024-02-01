@@ -47,7 +47,7 @@ pub fn archive(high_time: DateTime<Local>, archiver_interval: i64) {
     transition.vmstat = HISTORY.vmstat.read().unwrap().iter().filter(|vmstat| vmstat.timestamp > low_time && vmstat.timestamp <= high_time).cloned().collect::<Vec<VmStatInfo>>();
 
     let current_directory = current_dir().unwrap();
-    let filename = current_directory.join(format!("{}-{}-{}T{}-{}", low_time.format("%Y"), low_time.format("%m"), low_time.format("%d"), low_time.format("%H"), low_time.format("%M")));
+    let filename = current_directory.join(format!("procstat_{}-{}-{}T{}-{}.json", low_time.format("%Y"), low_time.format("%m"), low_time.format("%d"), low_time.format("%H"), low_time.format("%M")));
     debug!("filename: {:?}", filename.to_str());
     write(filename, serde_json::to_string(&transition).unwrap()).unwrap();
 }
