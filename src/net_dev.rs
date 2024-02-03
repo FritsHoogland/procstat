@@ -306,12 +306,28 @@ fn networkdevice_mbit_plot(
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption(format!("Networkdevice: {} Megabit per second", device_name), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
         .build_cartesian_2d(start_time..end_time, 0_f64..high_value_mbit)
-        .unwrap();
+        .unwrap()
+        .set_secondary_coord(start_time..end_time, 0_f64..(high_value_mbit / 8_f64));
     contextarea.configure_mesh()
         .x_labels(6)
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_desc("Megabit per second")
+        .y_label_formatter(&|size| {
+            if size == &0_f64    { format!("{:5.0}", size) } else 
+            if size < &10_f64    { format!("{:5.2}", size) } else 
+                                 { format!("{:5.0}", size) }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    contextarea.configure_secondary_axes()
+        .y_desc("Megabyte per second")
+        .y_label_formatter(&|size| {
+            if size == &0_f64    { format!("{:5.0}", size) } else 
+            if size < &1_f64     { format!("{:5.3}", size) } else 
+                                 { format!("{:5.0}", size) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -432,6 +448,7 @@ fn networkdevice_packet_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_desc("Packets per second")
+        .y_label_formatter(&|packets| format!("{:5.0}", packets))
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();

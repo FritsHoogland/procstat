@@ -338,7 +338,11 @@ fn memory_plot(
         .x_labels(6)
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
-        .y_desc("Memory MB")
+        .y_label_formatter(&|size| {
+            if size < &1024_f64  { format!("{:5.0} MB", size) } else 
+            if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) } else 
+                                 { format!("{:5.0} GB", size / 1024_f64) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -348,7 +352,7 @@ fn memory_plot(
     // This is a dummy plot for the sole intention to write a header in the legend.
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|meminfo| (meminfo.timestamp, meminfo.memtotal)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
-        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min MB", "max MB", "last MB"));
     //
     // memory total; this is the total limit, so it doesn't need to be stacked.
     let min_memory_total = historical_data_read.iter().map(|meminfo| meminfo.memtotal).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
@@ -541,7 +545,11 @@ fn swap_space_plot(
         .x_labels(6)
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
-        .y_desc("Swap MB")
+        .y_label_formatter(&|size| {
+            if size < &1024_f64  { format!("{:5.0} MB", size) } else 
+            if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) } else 
+                                 { format!("{:5.0} GB", size / 1024_f64) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -549,22 +557,20 @@ fn swap_space_plot(
     // This is a dummy plot for the sole intention to write a header in the legend.
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|meminfo| (meminfo.timestamp, meminfo.swaptotal)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
         .unwrap()
-        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
-    //
-    // memory total; this is the total limit, so it doesn't need to be stacked.
+        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min MB", "max MB", "last MB"));
+    // swap total; this is the total, so it doesn't need to be stacked.
     let min_swap_total = historical_data_read.iter().map(|meminfo| meminfo.swaptotal).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let max_swap_total = historical_data_read.iter().map(|meminfo| meminfo.swaptotal).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, meminfo.swaptotal/1024_f64)), 0.0, GREEN))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory total", min_swap_total/1024_f64, max_swap_total/1024_f64, latest.swaptotal/1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "swap total", min_swap_total/1024_f64, max_swap_total/1024_f64, latest.swaptotal/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
-    //
-    // memory used
+    // swap used
     let min_swap_used = historical_data_read.iter().map(|meminfo| meminfo.swaptotal - meminfo.swapfree).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     let max_swap_used = historical_data_read.iter().map(|meminfo| meminfo.swaptotal - meminfo.swapfree).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.swaptotal-meminfo.swapfree)/1024_f64)), 0.0, RED))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory used", min_swap_used/1024_f64, max_swap_used/1024_f64, (latest.swaptotal-latest.swapfree)/1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "swap used", min_swap_used/1024_f64, max_swap_used/1024_f64, (latest.swaptotal-latest.swapfree)/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
     //
     // draw the legend

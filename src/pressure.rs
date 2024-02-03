@@ -369,11 +369,23 @@ pub fn pressure_cpu_some_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_desc("Time per second")
+        .y_label_formatter(&|seconds| {
+            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
+            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
+            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
+            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
+                                      { format!("{:5.0} s", seconds) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
     contextarea.configure_secondary_axes()
         .y_desc("Percent")
+        .y_label_formatter(&|percent| {
+            if percent == &0_f64      { format!("{:5.0} %", percent) } else
+            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
+                                      { format!("{:5.0} %", percent) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -393,7 +405,7 @@ pub fn pressure_cpu_some_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
@@ -470,11 +482,23 @@ pub fn pressure_memory_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_desc("Time per second")
+        .y_label_formatter(&|seconds| {
+            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
+            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
+            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
+            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
+                                      { format!("{:5.0} s", seconds) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
     contextarea.configure_secondary_axes()
         .y_desc("Percent")
+        .y_label_formatter(&|percent| {
+            if percent == &0_f64      { format!("{:5.0} %", percent) } else
+            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
+                                      { format!("{:5.0} %", percent) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -493,7 +517,7 @@ pub fn pressure_memory_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
@@ -577,11 +601,22 @@ pub fn pressure_io_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_desc("Time per second")
+        .y_label_formatter(&|seconds| {
+            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
+            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
+            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
+            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
+                                      { format!("{:5.0} s", seconds) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
     contextarea.configure_secondary_axes()
-        .y_desc("Percent")
+        .y_label_formatter(&|percent| {
+            if percent == &0_f64      { format!("{:5.0} %", percent) } else
+            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
+                                      { format!("{:5.0} %", percent) }
+        })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
@@ -605,7 +640,7 @@ pub fn pressure_io_plot(
             $(
                 contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
                     .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
+                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
