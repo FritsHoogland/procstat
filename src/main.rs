@@ -10,14 +10,10 @@ use log::info;
 use env_logger;
 use std::sync::Arc;
 use chrono::Local;
-#[cfg(feature = "mem-debug")]
-use alloc_track::{AllocTrack, BacktraceMode};
-#[cfg(feature = "mem-debug")]
-use std::alloc::System;
 
-#[cfg(feature = "mem-debug")]
+#[cfg(feature = "dhat-heap")]
 #[global_allocator]
-static GLOBALALLOC: AllocTrack<System> = AllocTrack::new(System, BacktraceMode::Short);
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 mod common;
 mod stat;
@@ -57,8 +53,7 @@ static GRAPH_BUFFER_WIDTH: u32 = 1800;
 static GRAPH_BUFFER_HEIGHTH: u32 = 1250;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum OutputOptions
-{
+enum OutputOptions {
     SarU,
     #[clap(name = "sar-u-ALL")]
     SarUAll,
@@ -98,6 +93,8 @@ enum OutputOptions
     #[clap(name = "sar-w")]
     Sarw,
     Vmstat,
+    Ioq,
+    Ios,
 }
 
 #[derive(Debug, Parser)]
@@ -144,6 +141,9 @@ static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
 
 #[tokio::main]
 async fn main() {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap(); 
+
     env_logger::init();
     info!("Start procstat");
     let timer = Instant::now();
@@ -153,19 +153,13 @@ async fn main() {
         if args.archiver {
              archive(Local::now(), args.archiver_interval);
         }
-        //info!("Size of HISTORY: {}", HistoricalData.get_heap_size());
         info!("End procstat, total time: {:?}", timer.elapsed());
-
-        #[cfg(feature = "mem-debug")] {
-            let report = alloc_track::thread_report();
-            println!("{report}");
-        }
 
         process::exit(0);
     }).unwrap();
 
     // spawn the webserver 
-    if args.webserver {
+    if args.webserver || args.read.is_some() {
         let port = Arc::new(args.webserver_port);
         let port_clone = Arc::clone(&port);
         tokio::spawn( async move {
@@ -215,6 +209,8 @@ async fn main() {
                 OutputOptions::SarD => print_diskstats(&current_statistics, "sar-d", print_header).await,
                 OutputOptions::Iostat => print_diskstats(&current_statistics, "iostat", print_header).await,
                 OutputOptions::IostatX => print_diskstats(&current_statistics, "iostat-x", print_header).await,
+                OutputOptions::Ioq => print_diskstats(&current_statistics, "ioq", print_header).await,
+                OutputOptions::Ios => print_diskstats(&current_statistics, "ios", print_header).await,
                 OutputOptions::SarH => print_meminfo(&current_statistics, "sar-H", print_header).await,
                 OutputOptions::SarR => print_meminfo(&current_statistics, "sar-r", print_header).await,
                 OutputOptions::SarRAll => print_meminfo(&current_statistics, "sar-r-ALL", print_header).await,
@@ -236,9 +232,5 @@ async fn main() {
                 if until < output_counter { break };
             };
         }
-    }
-    #[cfg(feature = "mem-debug")] {
-        let report = alloc_track::thread_report();
-        println!("{report}");
     }
 }
