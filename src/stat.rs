@@ -261,10 +261,18 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                      "sched_w_s",
             );
         },
+        "schedstat" => {
+            println!("{:10} {:7}    {:>10} {:>10} {:>10}",
+                     "Timestamp",
+                     "cpu",
+                     "sched_w/s",
+                     "sched_r/s",
+                     "avg slice",
+            );
+        },
         &_ => todo! {},
     }
-    for cpu_name in cpu_list
-    {
+    for cpu_name in cpu_list {
         let timestamp = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().last_timestamp;
         let user = statistics.get(&("stat".to_string(), cpu_name.to_string(), "user".to_string())).unwrap().per_second_value;
         let nice = statistics.get(&("stat".to_string(), cpu_name.to_string(), "nice".to_string())).unwrap().per_second_value;
@@ -279,6 +287,8 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
         let total = user + nice + system + iowait + steal + irq + softirq + guest_user + guest_nice + idle;
         let scheduler_running = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_running".to_string())).unwrap().per_second_value / 1_000_000_f64;
         let scheduler_waiting = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "time_waiting".to_string())).unwrap().per_second_value / 1_000_000_f64;
+        let scheduler_slices = statistics.get(&("schedstat".to_string(), cpu_name.to_string(), "timeslices".to_string())).unwrap().per_second_value;
+        let scheduler_slice_avg_length = if scheduler_slices == 0_f64 { 0_f64 } else { scheduler_running / scheduler_slices };
         match output
         {
             "mpstat-P-ALL" => {
@@ -313,6 +323,15 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
                          idle / 1000_f64,
                          scheduler_running / 1000_f64,
                          scheduler_waiting / 1000_f64,
+                );
+            },
+            "schedstat" => {
+                println!("{:10} {:7}    {:10.2} {:10.2} {:10.6}",
+                         timestamp.format("%H:%M:%S"),
+                         cpu_name,
+                         scheduler_waiting / 1000_f64,
+                         scheduler_running / 1000_f64,
+                         scheduler_slice_avg_length / 1000_f64,
                 );
             },
             &_ => todo! {},

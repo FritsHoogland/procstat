@@ -95,6 +95,7 @@ enum OutputOptions {
     Vmstat,
     Ioq,
     Ios,
+    Schedstat,
 }
 
 #[derive(Debug, Parser)]
@@ -204,6 +205,7 @@ async fn main() {
                 OutputOptions::Sarb => print_diskstats(&current_statistics, "sar-b", print_header).await,
                 OutputOptions::SarUAll => print_all_cpu(&current_statistics, "sar-u-ALL", print_header).await,
                 OutputOptions::CpuAll => print_all_cpu(&current_statistics, "cpu-all", print_header).await,
+                OutputOptions::Schedstat => print_per_cpu(&current_statistics, "schedstat").await,
                 OutputOptions::MpstatPAll => print_per_cpu(&current_statistics, "mpstat-P-ALL").await,
                 OutputOptions::PerCpuAll => print_per_cpu(&current_statistics, "per-cpu-all").await,
                 OutputOptions::SarD => print_diskstats(&current_statistics, "sar-d", print_header).await,
