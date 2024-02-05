@@ -295,7 +295,7 @@ pub fn create_memory_swap_inout_plot(
     swap_inout_plot(&mut multi_backend, 1);
     swap_space_plot(&mut multi_backend, 2);
 }
-fn memory_plot(
+pub fn memory_plot(
     multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 )
@@ -305,21 +305,20 @@ fn memory_plot(
         .iter()
         .map(|meminfo| meminfo.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .map(|meminfo| meminfo.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let low_value: f64 = 0.0;
     let high_value = historical_data_read
         .iter()
         .map(|meminfo| (meminfo.memtotal * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .unwrap_or_default();
     let latest = historical_data_read
-        .back()
-        .unwrap();
+        .back();
     let min_free_kbytes: f64 = match Ctl::new("vm.min_free_kbytes") {
         Ok(value) => value.description().unwrap_or_default().parse::<f64>().unwrap_or_default(),
         Err(_) => 0_f64,
@@ -355,11 +354,11 @@ fn memory_plot(
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min MB", "max MB", "last MB"));
     //
     // memory total; this is the total limit, so it doesn't need to be stacked.
-    let min_memory_total = historical_data_read.iter().map(|meminfo| meminfo.memtotal).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_memory_total = historical_data_read.iter().map(|meminfo| meminfo.memtotal).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_memory_total = historical_data_read.iter().map(|meminfo| meminfo.memtotal).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_memory_total = historical_data_read.iter().map(|meminfo| meminfo.memtotal).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, meminfo.memtotal/1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory total", min_memory_total/1024_f64, max_memory_total/1024_f64, latest.memtotal/1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memory total", min_memory_total/1024_f64, max_memory_total/1024_f64, latest.map_or(0_f64, |latest| latest.memtotal/1024_f64)))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     //
@@ -367,125 +366,127 @@ fn memory_plot(
     // This is a manually constructed stacked area graph.
     // First hugepages used.
     // hugepages_used, hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
-    let min_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (((meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages used", min_hugepages_used/1024_f64, max_hugepages_used/1024_f64, ((latest.hugepages_total - latest.hugepages_free)*latest.hugepagesize)/1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages used", min_hugepages_used/1024_f64, max_hugepages_used/1024_f64, ((latest.map_or(0_f64, |latest| latest.hugepages_total) - latest.map_or(0_f64, |latest| latest.hugepages_free)) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_hugepages_free = historical_data_read.iter().map(|meminfo| meminfo.hugepages_free * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_free * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages free", min_hugepages_free/1024_f64, max_hugepages_free/1024_f64, (latest.hugepages_free * latest.hugepagesize)/1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages free", min_hugepages_free/1024_f64, max_hugepages_free/1024_f64, (latest.map_or(0_f64, |latest| latest.hugepages_free) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_buffers = historical_data_read.iter().map(|meminfo| meminfo.buffers).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "buffers", min_buffers/1024_f64, max_buffers/1024_f64, latest.buffers / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "buffers", min_buffers/1024_f64, max_buffers/1024_f64, latest.map_or(0_f64, |latest| latest.buffers) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_swapcached = historical_data_read.iter().map(|meminfo| meminfo.swapcached).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_swapcached = historical_data_read.iter().map(|meminfo| meminfo.swapcached).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_swapcached = historical_data_read.iter().map(|meminfo| meminfo.swapcached).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_swapcached = historical_data_read.iter().map(|meminfo| meminfo.swapcached).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "swapcached", min_swapcached/1024_f64, max_swapcached/1024_f64, latest.swapcached / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "swapcached", min_swapcached/1024_f64, max_swapcached/1024_f64, latest.map_or(0_f64, |latest| latest.swapcached) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_kernelstack = historical_data_read.iter().map(|meminfo| meminfo.kernelstack).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_kernelstack = historical_data_read.iter().map(|meminfo| meminfo.kernelstack).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_kernelstack = historical_data_read.iter().map(|meminfo| meminfo.kernelstack).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_kernelstack = historical_data_read.iter().map(|meminfo| meminfo.kernelstack).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "kernelstack", min_kernelstack/1024_f64, max_kernelstack/1024_f64, latest.kernelstack / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "kernelstack", min_kernelstack/1024_f64, max_kernelstack/1024_f64, latest.map_or(0_f64, |latest| latest.kernelstack) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_hardwarecorrupted = historical_data_read.iter().map(|meminfo| meminfo.hardwarecorrupted).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_hardwarecorrupted = historical_data_read.iter().map(|meminfo| meminfo.hardwarecorrupted).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_hardwarecorrupted = historical_data_read.iter().map(|meminfo| meminfo.hardwarecorrupted).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_hardwarecorrupted = historical_data_read.iter().map(|meminfo| meminfo.hardwarecorrupted).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hardwarecorrupted", min_hardwarecorrupted/1024_f64, max_hardwarecorrupted/1024_f64, latest.hardwarecorrupted / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hardwarecorrupted", min_hardwarecorrupted/1024_f64, max_hardwarecorrupted/1024_f64, latest.map_or(0_f64, |latest| latest.hardwarecorrupted) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_slab = historical_data_read.iter().map(|meminfo| meminfo.slab).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_slab = historical_data_read.iter().map(|meminfo| meminfo.slab).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_slab = historical_data_read.iter().map(|meminfo| meminfo.slab).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_slab = historical_data_read.iter().map(|meminfo| meminfo.slab).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "slab", min_slab/1024_f64, max_slab/1024_f64, latest.slab / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "slab", min_slab/1024_f64, max_slab/1024_f64, latest.map_or(0_f64, |latest| latest.slab) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // pagetables, dirty, shmem, mapped, cached, anonymous, memfree
-    let min_pagetables = historical_data_read.iter().map(|meminfo| meminfo.pagetables).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_pagetables = historical_data_read.iter().map(|meminfo| meminfo.pagetables).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_pagetables = historical_data_read.iter().map(|meminfo| meminfo.pagetables).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_pagetables = historical_data_read.iter().map(|meminfo| meminfo.pagetables).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pagetables", min_pagetables/1024_f64, max_pagetables/1024_f64, latest.pagetables / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pagetables", min_pagetables/1024_f64, max_pagetables/1024_f64, latest.map_or(0_f64, |latest| latest.pagetables) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // dirty sits inside 'cached'
     // dirty, shmem, mapped, cached, anonymous, memfree
-    let min_dirty = historical_data_read.iter().map(|meminfo| meminfo.dirty).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_dirty = historical_data_read.iter().map(|meminfo| meminfo.dirty).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_dirty = historical_data_read.iter().map(|meminfo| meminfo.dirty).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_dirty = historical_data_read.iter().map(|meminfo| meminfo.dirty).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "dirty", min_dirty/1024_f64, max_dirty/1024_f64, latest.dirty / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "dirty", min_dirty/1024_f64, max_dirty/1024_f64, latest.map_or(0_f64, |latest| latest.dirty) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // shmem, mapped, cached, anonymous, memfree
-    let min_shmem = historical_data_read.iter().map(|meminfo| meminfo.shmem).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_shmem = historical_data_read.iter().map(|meminfo| meminfo.shmem).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_shmem = historical_data_read.iter().map(|meminfo| meminfo.shmem).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_shmem = historical_data_read.iter().map(|meminfo| meminfo.shmem).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.cached - meminfo.dirty) + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "shmem (smallpages)", min_shmem/1024_f64, max_shmem/1024_f64, latest.shmem / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "shmem (smallpages)", min_shmem/1024_f64, max_shmem/1024_f64, latest.map_or(0_f64, |latest| latest.shmem) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // mapped, cached, anonymous, memfree
-    let min_mapped = historical_data_read.iter().map(|meminfo| meminfo.mapped).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_mapped = historical_data_read.iter().map(|meminfo| meminfo.mapped).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_mapped = historical_data_read.iter().map(|meminfo| meminfo.mapped).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_mapped = historical_data_read.iter().map(|meminfo| meminfo.mapped).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.cached - meminfo.dirty - meminfo.shmem) + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "mapped", min_mapped/1024_f64, max_mapped/1024_f64, latest.mapped / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "mapped", min_mapped/1024_f64, max_mapped/1024_f64, latest.map_or(0_f64, |latest| latest.mapped) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // cached, anonymous, memfree
-    let min_cached = historical_data_read.iter().map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_cached = historical_data_read.iter().map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_cached = historical_data_read.iter().map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_cached = historical_data_read.iter().map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty) + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "cached", min_cached/1024_f64, max_cached/1024_f64, (latest.cached - latest.mapped.max(latest.shmem) - latest.dirty) / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "cached", min_cached/1024_f64, max_cached/1024_f64, (latest.map_or(0_f64, |latest| latest.cached) - latest.map_or(0_f64, |latest| latest.mapped).max(latest.map_or(0_f64, |latest| latest.shmem)) - latest.map_or(0_f64, |latest| latest.dirty)) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // anonymous, memfree
-    let min_anonpages = historical_data_read.iter().map(|meminfo| meminfo.anonpages).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_anonpages = historical_data_read.iter().map(|meminfo| meminfo.anonpages).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_anonpages = historical_data_read.iter().map(|meminfo| meminfo.anonpages).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_anonpages = historical_data_read.iter().map(|meminfo| meminfo.anonpages).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "anonpages", min_anonpages/1024_f64, max_anonpages/1024_f64, latest.anonpages / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "anonpages", min_anonpages/1024_f64, max_anonpages/1024_f64, latest.map_or(0_f64, |latest| latest.anonpages) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     //palette99_pick += 1;
     // memfree
-    let min_memfree = historical_data_read.iter().map(|meminfo| meminfo.memfree).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_memfree = historical_data_read.iter().map(|meminfo| meminfo.memfree).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, meminfo.memfree / 1024_f64)), 0.0, LIGHTGREEN))
+    let min_memfree = historical_data_read.iter().map(|meminfo| meminfo.memfree).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_memfree = historical_data_read.iter().map(|meminfo| meminfo.memfree).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    contextarea.draw_series(AreaSeries::new(historical_data_read
+            .iter()
+        .map(|meminfo| (meminfo.timestamp, meminfo.memfree / 1024_f64)), 0.0, LIGHTGREEN))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memfree", min_memfree/1024_f64, max_memfree/1024_f64, latest.memfree / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memfree", min_memfree/1024_f64, max_memfree/1024_f64, latest.map_or(0_f64, |latest| latest.memfree) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], LIGHTGREEN.filled()));
     //palette99_pick += 1;
     // special drawing
     // memavailable
-    let min_memavailable = historical_data_read.iter().map(|meminfo| meminfo.memavailable).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-    let max_memavailable = historical_data_read.iter().map(|meminfo| meminfo.memavailable).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+    let min_memavailable = historical_data_read.iter().map(|meminfo| meminfo.memavailable).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_memavailable = historical_data_read.iter().map(|meminfo| meminfo.memavailable).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, meminfo.memavailable / 1024_f64)),  ShapeStyle { color: RED.into(), filled: false, stroke_width: 1} ))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memavailable", min_memavailable/1024_f64, max_memavailable/1024_f64, latest.memavailable / 1024_f64))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "memavailable", min_memavailable/1024_f64, max_memavailable/1024_f64, latest.map_or(0_f64, |latest| latest.memavailable) / 1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
     if min_free_kbytes != 0_f64 {
         // min_free_kbytes / pages_min

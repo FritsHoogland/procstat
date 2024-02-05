@@ -849,7 +849,13 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevices| blockdevices.queue_nr_requests * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let high_value_queue = high_value_queue_depth.max(high_value_max_queue_size);
+    // For the TOTAL overview it doesn't make sense to use max_queue_size, because all devices
+    // in it can have different max values. So it also doesn't make sense to show the max we find.
+    let high_value_queue = if device_name != "TOTAL" {
+        high_value_queue_depth.max(high_value_max_queue_size)
+    } else {
+        high_value_queue_depth
+    };
 
     // create the plot
     multi_backend[2].fill(&WHITE).unwrap();

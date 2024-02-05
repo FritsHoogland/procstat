@@ -10,6 +10,7 @@ use crate::meminfo::{create_memory_plot, create_memory_psi_plot, create_memory_s
 use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot};
 use crate::net_dev::create_networkdevice_plot;
 use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
+use crate::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi_plot};
 use crate::HISTORY;
 use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use log::info;
@@ -61,7 +62,9 @@ pub async fn root_handler() -> Html<String>
      <li><a href="/handler/cpu_load/x" target="right">CPU total-load</a></li>
      <li><a href="/handler/cpu_load_psi/x" target="right">CPU total-load-psi</a></li>
      <li><a href="/handler/memory/x" target="right">Memory</a></li>
+     <li><a href="/handler/memory_alloc/x" target="right">Memory-alloc</a></li>
      <li><a href="/handler/memory_psi/x" target="right">Memory-psi</a></li>
+     <li><a href="/handler/memory_psi_alloc/x" target="right">Memory-psi-alloc</a></li>
      <li><a href="/handler/memory_swap/x" target="right">Memory-swapspace</a></li>
      <li><a href="/handler/memory_swap_inout/x" target="right">Memory-swapspace-swapio</a></li>
      {html_for_blockdevices}
@@ -92,7 +95,9 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "cpu_load" => create_cpu_load_plot(&mut buffer),
         "cpu_load_psi" => create_cpu_load_pressure_plot(&mut buffer),
         "memory" => create_memory_plot(&mut buffer),
+        "memory_alloc" => create_memory_alloc_plot(&mut buffer),
         "memory_psi" => create_memory_psi_plot(&mut buffer),
+        "memory_psi_alloc" => create_memory_alloc_psi_plot(&mut buffer),
         "memory_swap" => create_memory_swap_plot(&mut buffer),
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer),
         &_ => todo!(),
