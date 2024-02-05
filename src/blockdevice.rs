@@ -7,6 +7,7 @@ use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::{*, full_palette::PURPLE};
 use plotters::style::colors::full_palette::RED_100;
+use plotters::style::full_palette::GREY_100;
 use proc_sys_parser::block::SysBlock;
 use serde::{Serialize, Deserialize};
 
@@ -20,6 +21,9 @@ use crate::pressure::pressure_io_plot;
 pub struct BlockDeviceInfo {
     pub timestamp: DateTime<Local>,
     pub device_name: String,
+    pub device_major_minor: String,
+    pub removable: f64,
+    pub ro: f64,
     pub reads_completed_success: f64,
     pub reads_merged: f64,
     pub reads_bytes: f64,
@@ -42,6 +46,13 @@ pub struct BlockDeviceInfo {
     pub queue_max_sectors_kb: f64,
     pub queue_max_hw_sectors_kb: f64,
     pub queue_nr_requests: f64,
+    pub queue_rotational: f64,
+    pub queue_dax: f64,
+    pub queue_hw_sector_size: f64,
+    pub queue_logical_block_size: f64,
+    pub queue_nomerges: f64,
+    pub queue_physical_block_size: f64,
+    pub queue_read_ahead_kb: f64,
 }
 
 pub async fn read_blockdevice_sys_data() -> SysBlock {
@@ -61,7 +72,7 @@ pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut Has
                 )*
             };
         }
-        add_diskstats_data_to_statistics_u64!(stat_reads_completed_success, stat_reads_merged, stat_reads_sectors, stat_reads_time_spent_ms, stat_writes_completed_success, stat_writes_merged, stat_writes_sectors, stat_writes_time_spent_ms, stat_ios_in_progress, stat_ios_time_spent_ms, stat_ios_weighted_time_spent_ms, inflight_reads, inflight_writes, queue_max_hw_sectors_kb, queue_max_sectors_kb, queue_nr_requests);
+        add_diskstats_data_to_statistics_u64!(stat_reads_completed_success, stat_reads_merged, stat_reads_sectors, stat_reads_time_spent_ms, stat_writes_completed_success, stat_writes_merged, stat_writes_sectors, stat_writes_time_spent_ms, stat_ios_in_progress, stat_ios_time_spent_ms, stat_ios_weighted_time_spent_ms, inflight_reads, inflight_writes, queue_max_hw_sectors_kb, queue_max_sectors_kb, queue_nr_requests, dev_block_major, dev_block_minor, removable, ro, queue_rotational, queue_dax, queue_hw_sector_size, queue_logical_block_size, queue_nomerges, queue_physical_block_size, queue_read_ahead_kb);
         macro_rules! add_diskstats_data_to_statistics_option_u64 {
             ($($field_name:ident),*) => {
                 $(
@@ -140,11 +151,25 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         totals[20] += queue_max_hw_sectors_kb;
         let queue_nr_requests = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nr_requests".to_string())).unwrap().last_value;
         totals[21] += queue_nr_requests;
+        let dev_block_major = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "dev_block_major".to_string())).unwrap().last_value;
+        let dev_block_minor = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "dev_block_minor".to_string())).unwrap().last_value;
+        let removable = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "removable".to_string())).unwrap().last_value;
+        let ro = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "ro".to_string())).unwrap().last_value;
+        let queue_rotational = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_rotational".to_string())).unwrap().last_value;
+        let queue_dax = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_dax".to_string())).unwrap().last_value;
+        let queue_hw_sector_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_hw_sector_size".to_string())).unwrap().last_value;
+        let queue_logical_block_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_logical_block_size".to_string())).unwrap().last_value;
+        let queue_nomerges = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nomerges".to_string())).unwrap().last_value;
+        let queue_physical_block_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_physical_block_size".to_string())).unwrap().last_value;
+        let queue_read_ahead_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_read_ahead_kb".to_string())).unwrap().last_value;
 
 
         HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
             timestamp,
             device_name: disk_name.to_string(),
+            device_major_minor: format!("{}:{}", dev_block_major, dev_block_minor),
+            removable,
+            ro,
             reads_completed_success,
             reads_merged,
             reads_bytes,
@@ -167,12 +192,22 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
             queue_max_sectors_kb,
             queue_max_hw_sectors_kb,
             queue_nr_requests,
+            queue_rotational,
+            queue_dax,
+            queue_hw_sector_size,
+            queue_logical_block_size,
+            queue_nomerges,
+            queue_physical_block_size,
+            queue_read_ahead_kb
         });
     }
 
     HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
         timestamp,
         device_name: "TOTAL".to_string(),
+        device_major_minor: "".to_string(),
+        removable: 0_f64,
+        ro: 0_f64,
         reads_completed_success: totals[0],
         reads_merged: totals[1],
         reads_bytes: totals[2],
@@ -195,6 +230,13 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         queue_max_sectors_kb: totals[19],
         queue_max_hw_sectors_kb: totals[20],
         queue_nr_requests: totals[21],
+        queue_rotational: 0_f64,
+        queue_dax: 0_f64,
+        queue_hw_sector_size: 0_f64,
+        queue_logical_block_size: 0_f64,
+        queue_nomerges: 0_f64,
+        queue_physical_block_size: 0_f64,
+        queue_read_ahead_kb: 0_f64,
     });
 }
 
@@ -500,6 +542,23 @@ pub fn create_blockdevice_plot(
     if device_name != "TOTAL" { blockdevice_iosize_plot(&mut multi_backend, 3, device_name) };
 }
 
+pub fn create_blockdevice_plot_extra(
+    buffer: &mut [u8],
+    device_name: String,
+)
+{
+    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let nr = if device_name == "TOTAL" { 3 } else { 5 };
+    let mut multi_backend = backend.split_evenly((nr, 1));
+    blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
+    blockdevice_iops_plot(&mut multi_backend, 1, device_name.clone());
+    blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name.clone());
+    if device_name != "TOTAL" { 
+        blockdevice_iosize_plot(&mut multi_backend, 3, device_name.clone());
+        blockdevice_extra(&mut multi_backend, 4, device_name.clone());
+    };
+}
+
 pub fn create_blockdevice_psi_plot(
     buffer: &mut [u8],
     device_name: String,
@@ -542,8 +601,7 @@ fn blockdevice_mbps_plot(
     let latest = historical_data_read
         .iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
-        .last()
-        .unwrap();
+        .last();
 
     // create the plot
     let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
@@ -592,7 +650,7 @@ fn blockdevice_mbps_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name)
                                                 .map(|blockdevice| (blockdevice.timestamp, (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))), BLACK))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_mbps, max_total_mbps, ((latest.writes_bytes + latest.reads_bytes) / (1024_f64 * 1024_f64))))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_mbps, max_total_mbps, ((latest.map_or(0_f64, | latest| latest.writes_bytes + latest.reads_bytes)) / (1024_f64 * 1024_f64))))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
     // write MBPS
     let min_write_mbps = historical_data_read.iter()
@@ -610,7 +668,7 @@ fn blockdevice_mbps_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.writes_bytes / (1024_f64 * 1024_f64)), 4, RED.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_mbps, max_write_mbps, latest.writes_bytes / (1024_f64 * 1024_f64)))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_mbps, max_write_mbps, latest.map_or(0_f64, |latest| latest.writes_bytes) / (1024_f64 * 1024_f64)))
         .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
     // read MBPS
     let min_read_mbps = historical_data_read
@@ -629,7 +687,7 @@ fn blockdevice_mbps_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.reads_bytes / (1024_f64 * 1024_f64)), 3, GREEN.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_mbps, max_read_mbps, latest.reads_bytes / (1024_f64 * 1024_f64)))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_mbps, max_read_mbps, latest.map_or(0_f64, |latest| latest.reads_bytes) / (1024_f64 * 1024_f64)))
         .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
     // legend
     contextarea.configure_series_labels()
@@ -656,13 +714,13 @@ fn blockdevice_iops_plot(
         .filter(|blockdevices| blockdevices.device_name == device_name)
         .map(|blockdevices| blockdevices.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
         .map(|blockdevices| blockdevices.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let high_value = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -672,8 +730,7 @@ fn blockdevice_iops_plot(
     let latest = historical_data_read
         .iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
-        .last()
-        .unwrap();
+        .last();
 
     // create the plot
     multi_backend[1].fill(&WHITE).unwrap();
@@ -721,7 +778,7 @@ fn blockdevice_iops_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name)
                                                 .map(|blockdevice| (blockdevice.timestamp, blockdevice.writes_completed_success + blockdevice.reads_completed_success + blockdevice.discards_completed_success)), BLACK))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_iops, max_total_iops, (latest.writes_completed_success + latest.reads_completed_success + latest.discards_completed_success)))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_iops, max_total_iops, (latest.map_or(0_f64, |latest| latest.writes_completed_success + latest.reads_completed_success + latest.discards_completed_success))))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
     // write IOPS
     let min_write_iops = historical_data_read
@@ -740,7 +797,7 @@ fn blockdevice_iops_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_completed_success > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.writes_completed_success), 4, RED.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "writes", min_write_iops, max_write_iops, latest.writes_completed_success))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "writes", min_write_iops, max_write_iops, latest.map_or(0_f64, |latest| latest.writes_completed_success)))
         .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
     // read IOPS
     let min_read_iops = historical_data_read
@@ -759,7 +816,7 @@ fn blockdevice_iops_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_completed_success > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.reads_completed_success), 3, GREEN.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_iops, max_read_iops, latest.reads_completed_success))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_iops, max_read_iops, latest.map_or(0_f64, |latest| latest.reads_completed_success)))
         .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
     // discards IOPS
     let min_discard_iops = historical_data_read
@@ -778,7 +835,7 @@ fn blockdevice_iops_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.discards_completed_success > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.discards_completed_success), 2, PURPLE.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "discard", min_discard_iops, max_discard_iops, latest.discards_completed_success))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "discard", min_discard_iops, max_discard_iops, latest.map_or(0_f64, |latest| latest.discards_completed_success)))
         .legend(move |(x, y)| Circle::new((x, y), 2, PURPLE.filled()));
     // legend
     contextarea.configure_series_labels()
@@ -805,13 +862,13 @@ fn blockdevice_latency_queuedepth_plot(
         .filter(|blockdevices| blockdevices.device_name == device_name)
         .map(|blockdevices| blockdevices.timestamp)
         .min()
-        .unwrap();
+        .unwrap_or_default();
     let end_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
         .map(|blockdevices| blockdevices.timestamp)
         .max()
-        .unwrap();
+        .unwrap_or_default();
     let high_value_latencies_read = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -906,7 +963,7 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if blockdevice.writes_completed_success == 0_f64 { 0_f64 } else { blockdevice.writes_time_spent_ms / blockdevice.writes_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let latest_writes_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success == 0_f64 { 0_f64 } 
+    let latest_writes_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.writes_completed_success) == 0_f64 { 0_f64 } 
     else { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_time_spent_ms / historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().writes_completed_success };
     contextarea.draw_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_completed_success > 0_f64)
@@ -928,7 +985,7 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if blockdevice.reads_completed_success == 0_f64 { 0_f64 } else { blockdevice.reads_time_spent_ms / blockdevice.reads_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let latest_reads_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms == 0_f64 { 0_f64 } 
+    let latest_reads_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.reads_time_spent_ms) == 0_f64 { 0_f64 } 
     else { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_time_spent_ms / historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().reads_completed_success };
     contextarea.draw_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_completed_success > 0_f64)
@@ -949,7 +1006,7 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if blockdevice.discards_completed_success == 0_f64 { 0_f64 } else { blockdevice.discards_time_spent_ms / blockdevice.discards_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let latest_discard_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success == 0_f64 { 0_f64 }
+    let latest_discard_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.discards_completed_success) == 0_f64 { 0_f64 }
     else { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_time_spent_ms / historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().discards_completed_success };
     contextarea.draw_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.discards_completed_success > 0_f64)
@@ -970,7 +1027,7 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| if blockdevice.flush_requests_completed_success == 0_f64 { 0_f64 } else { blockdevice.flush_requests_time_spent_ms / blockdevice.flush_requests_completed_success })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let latest_flush_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_completed_success == 0_f64 { 0_f64 } 
+    let latest_flush_latency = if historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.flush_requests_completed_success) == 0_f64 { 0_f64 } 
     else { historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_time_spent_ms / historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().flush_requests_completed_success };
     contextarea.draw_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.flush_requests_completed_success > 0_f64)
@@ -990,7 +1047,7 @@ fn blockdevice_latency_queuedepth_plot(
         .map(|blockdevice| blockdevice.ios_weighted_time_spent_ms / 1000_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let latest_queue_depth = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().ios_weighted_time_spent_ms / 1000_f64;
+    let latest_queue_depth = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.ios_weighted_time_spent_ms) / 1000_f64;
     contextarea.draw_secondary_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.ios_weighted_time_spent_ms > 0_f64)
                                                 .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.ios_weighted_time_spent_ms / 1000_f64), 4, BLACK.filled())))
@@ -1000,7 +1057,7 @@ fn blockdevice_latency_queuedepth_plot(
     // max queue size
     // It wouldn't make sense to use total, because it combines different blockdevices.
     if device_name != "TOTAL" {
-        let latest_queue_nr_requests = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().unwrap().queue_nr_requests;
+        let latest_queue_nr_requests = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.queue_nr_requests);
         contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name)
                                                 .map(|blockdevice| (blockdevice.timestamp, blockdevice.queue_nr_requests)), RED_100))
@@ -1060,8 +1117,7 @@ fn blockdevice_iosize_plot(
     let latest = historical_data_read
         .iter()
         .filter(|blockdevice| blockdevice.device_name == device_name)
-        .last()
-        .unwrap();
+        .last();
 
     // create the plot
     let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
@@ -1103,7 +1159,7 @@ fn blockdevice_iosize_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_completed_success > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, (blockdevice.writes_bytes / blockdevice.writes_completed_success) / 1024_f64), 4, RED.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_size, max_write_size, if latest.writes_completed_success == 0_f64 { 0_f64 } else { (latest.writes_bytes / latest.writes_completed_success) / 1024_f64 } ))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_size, max_write_size, if latest.map_or(0_f64, |latest| latest.writes_completed_success) == 0_f64 { 0_f64 } else { (latest.map_or(0_f64, |latest| latest.writes_bytes) / latest.map_or(0_f64, |latest| latest.writes_completed_success)) / 1024_f64 } ))
         .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
     // read
     let min_read_size = historical_data_read
@@ -1122,21 +1178,21 @@ fn blockdevice_iosize_plot(
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_completed_success > 0_f64)
                                                 .map(|blockdevice| Circle::new((blockdevice.timestamp, (blockdevice.reads_bytes / blockdevice.reads_completed_success) / 1024_f64), 3, GREEN.filled())))
         .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_size, max_read_size, if latest.reads_completed_success == 0_f64 { 0_f64 } else { (latest.reads_bytes / latest.reads_completed_success) / 1024_f64 } ))
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_size, max_read_size, if latest.map_or(0_f64, |latest| latest.reads_completed_success) == 0_f64 { 0_f64 } else { (latest.map_or(0_f64, |latest| latest.reads_bytes) / latest.map_or(0_f64, |latest| latest.reads_completed_success)) / 1024_f64 } ))
         .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
     // current max IO size line
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
                                             .filter(|blockdevice| blockdevice.device_name == device_name)
                                             .map(|blockdevice| (blockdevice.timestamp, blockdevice.queue_max_sectors_kb)), BLACK))
     .unwrap()
-    .label(format!("{:25} {:10} {:10} {:10.2}", "max_sectors_kb", "", "", latest.queue_max_sectors_kb))
+    .label(format!("{:25} {:10} {:10} {:10.2}", "max_sectors_kb", "", "", latest.map_or(0_f64, |latest| latest.queue_max_sectors_kb)))
     .legend(|(x, y)| PathElement::new(vec![(x-3,y), (x+3,y)], BLACK.filled()));
     // 
     contextarea.draw_series(LineSeries::new(historical_data_read.iter()
                                                                 .take(1)
                                                                 .map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
         .unwrap()
-        .label(format!("{:25} {:10} {:10} {:10.2}", "max_hw_sectors_kb", "", "", latest.queue_max_hw_sectors_kb));
+        .label(format!("{:25} {:10} {:10} {:10.2}", "max_hw_sectors_kb", "", "", latest.map_or(0_f64, |latest| latest.queue_max_hw_sectors_kb)));
     // legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
@@ -1145,4 +1201,180 @@ fn blockdevice_iosize_plot(
         .position(UpperLeft)
         .draw()
         .unwrap();
+}
+
+fn blockdevice_extra(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+    device_name: String,
+)
+{
+    multi_backend[backend_number].fill(&GREY_100).unwrap();
+    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    // 
+    // CAPTION_STYLE_FONT _SIZE 30
+    // MESH_STYLE_FONT _SIZE    17
+    // LABELS_STYLE_FONT _SIZE  15
+    let latest = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .last();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("device:             {:>10}", device_name), (100,0), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("major:minor:        {:>10}", latest.map_or("".to_string(), |d| d.device_major_minor.clone())), (100,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("removable:          {:>10}", latest.map_or(0_f64, |d| d.removable)), (100,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("readonly:           {:>10}", latest.map_or(0_f64, |d| d.ro)), (100,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("rotational:         {:>10}", latest.map_or(0_f64, |d| d.queue_rotational)), (100,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("dax:                {:>10}", latest.map_or(0_f64, |d| d.queue_dax)), (100,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("nr_requests:        {:>10}", latest.map_or(0_f64, |d| d.queue_nr_requests)), (100,140), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("max_sectors_kb:     {:>10}", latest.map_or(0_f64, |d| d.queue_max_sectors_kb)), (100,160), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("max_hw_sectors_kb:  {:>10}", latest.map_or(0_f64, |d| d.queue_max_hw_sectors_kb)), (100,180), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("hw_sector_size:     {:>10}", latest.map_or(0_f64, |d| d.queue_hw_sector_size)), (600,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("logical_block_size  {:>10}", latest.map_or(0_f64, |d| d.queue_logical_block_size)), (600,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("nomerges            {:>10}", latest.map_or(0_f64, |d| d.queue_nomerges)), (600,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("physical_block_size {:>10}", latest.map_or(0_f64, |d| d.queue_physical_block_size)), (600,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("read_ahead_kb       {:>10}", latest.map_or(0_f64, |d| d.queue_read_ahead_kb)), (600,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    //multi_backend.fill(WHITE);
+    /*
+    multi_backend[backend_number].draw(&MultiLineText::<(i32, i32), &str>::new(
+        (100,100),
+        "test",
+    )).unwrap();
+    */
+        //(LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE).into_font(),
+    /*
+    let start_time = historical_data_read
+        .iter()
+        .filter(|blockdevices| blockdevices.device_name == device_name)
+        .map(|blockdevices| blockdevices.timestamp)
+        .min()
+        .unwrap_or_default();
+    let end_time = historical_data_read
+        .iter()
+        .filter(|blockdevices| blockdevices.device_name == device_name)
+        .map(|blockdevices| blockdevices.timestamp)
+        .max()
+        .unwrap_or_default();
+    let high_value = historical_data_read
+        .iter()
+        .filter(|blockdevices| blockdevices.device_name == device_name)
+        .map(|blockdevices| ((blockdevices.reads_bytes + blockdevices.writes_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let latest = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .last()
+        .unwrap();
+
+    // create the plot
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption(format!("Blockdevice: {} info", device_name), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        //.build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .unwrap();
+
+    contextarea.configure_mesh()
+        .x_labels(6)
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_desc("Time")
+        .y_desc("MBPS")
+        .y_label_formatter(&|mbps| {
+            if mbps == &0_f64  { format!("{:5.0}", mbps) } else
+            if mbps  < &1_f64  { format!("{:5.3}", mbps) } else 
+                               { format!("{:5.0}", mbps) }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    //
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
+                                                                .take(1)
+                                                                .map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
+        .unwrap()
+        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+    //
+    // total MBPS
+    // this is a line graph, so total MBPS = write + discard
+    let min_total_mbps = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && (blockdevice.writes_bytes + blockdevice.reads_bytes) > 0_f64)
+        .map(|blockdevice| (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_total_mbps = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && (blockdevice.writes_bytes + blockdevice.reads_bytes) > 0_f64)
+        .map(|blockdevice| (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
+                                                .filter(|blockdevice| blockdevice.device_name == device_name)
+                                                .map(|blockdevice| (blockdevice.timestamp, (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))), BLACK))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_mbps, max_total_mbps, ((latest.writes_bytes + latest.reads_bytes) / (1024_f64 * 1024_f64))))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // write MBPS
+    let min_write_mbps = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
+        .map(|blockdevice| blockdevice.writes_bytes / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_write_mbps = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
+        .map(|blockdevice| blockdevice.writes_bytes / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
+                                                .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.writes_bytes / (1024_f64 * 1024_f64)), 4, RED.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_mbps, max_write_mbps, latest.writes_bytes / (1024_f64 * 1024_f64)))
+        .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
+    // read MBPS
+    let min_read_mbps = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
+        .map(|blockdevice| blockdevice.reads_bytes / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_read_mbps = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
+        .map(|blockdevice| blockdevice.reads_bytes / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(historical_data_read.iter()
+                                                .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
+                                                .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.reads_bytes / (1024_f64 * 1024_f64)), 3, GREEN.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_mbps, max_read_mbps, latest.reads_bytes / (1024_f64 * 1024_f64)))
+        .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
+    // legend
+    contextarea.configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+    */
 }

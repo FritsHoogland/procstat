@@ -50,7 +50,7 @@ static LABELS_STYLE_FONT: &str = "monospace";
 static LABELS_STYLE_FONT_SIZE: i32 = 15;
 
 static GRAPH_BUFFER_WIDTH: u32 = 1800;
-static GRAPH_BUFFER_HEIGHTH: u32 = 1250;
+static GRAPH_BUFFER_HEIGHTH: u32 = 1500;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions {

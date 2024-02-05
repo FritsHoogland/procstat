@@ -7,7 +7,7 @@ use axum::extract::Path;
 use image::{DynamicImage, ImageOutputFormat};
 use crate::stat::create_cpu_plot;
 use crate::meminfo::{create_memory_plot, create_memory_psi_plot, create_memory_swap_plot, create_memory_swap_inout_plot};
-use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot};
+use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot, create_blockdevice_plot_extra};
 use crate::net_dev::create_networkdevice_plot;
 use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
 use crate::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi_plot};
@@ -28,19 +28,20 @@ pub async fn root_handler() -> Html<String>
     }
     let unique_blockdevices: Vec<_> = HISTORY.blockdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
     let mut html_for_blockdevices = String::new();
-    for device in &unique_blockdevices
-    {
+    for device in &unique_blockdevices {
         html_for_blockdevices += format!(r##"<li><a href="/handler/blockdevice/{}" target="right">Blockdevice {}</a></li>"##, device, device).as_str();
     }
     let mut html_for_blockdevices_psi = String::new();
-    for device in unique_blockdevices
-    {
+    for device in &unique_blockdevices {
         html_for_blockdevices_psi += format!(r##"<li><a href="/handler/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a></li>"##, device, device).as_str();
+    }
+    let mut html_for_blockdevices_extra = String::new();
+    for device in unique_blockdevices {
+        html_for_blockdevices_extra += format!(r##"<li><a href="/handler/blockdevice_extra/{}" target="right">Blockdevice-extra {}</a></li>"##, device, device).as_str();
     }
     let unique_networkdevices: Vec<_> = HISTORY.networkdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
     let mut html_for_networkdevices = String::new();
-    for device in unique_networkdevices
-    {
+    for device in unique_networkdevices {
         html_for_networkdevices += format!(r##"<li><a href="/handler/networkdevice/{}" target="right">Networkdevice {}</a></li>"##, device, device).as_str();
     }
 
@@ -69,6 +70,7 @@ pub async fn root_handler() -> Html<String>
      <li><a href="/handler/memory_swap_inout/x" target="right">Memory-swapspace-swapio</a></li>
      {html_for_blockdevices}
      {html_for_blockdevices_psi}
+     {html_for_blockdevices_extra}
      {html_for_networkdevices}
     </nav>
    </div>
@@ -91,6 +93,7 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "networkdevice" => create_networkdevice_plot(&mut buffer, plot_2),
         "blockdevice" => create_blockdevice_plot(&mut buffer, plot_2),
         "blockdevice_psi" => create_blockdevice_psi_plot(&mut buffer, plot_2),
+        "blockdevice_extra" => create_blockdevice_plot_extra(&mut buffer, plot_2),
         "cpu" => create_cpu_plot(&mut buffer),
         "cpu_load" => create_cpu_load_plot(&mut buffer),
         "cpu_load_psi" => create_cpu_load_pressure_plot(&mut buffer),
