@@ -1,3 +1,7 @@
 /target
 /.idea
 **/.DS_Store
+/*.json
+/*.svg
+/*.data
+/*.old
