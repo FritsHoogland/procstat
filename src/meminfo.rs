@@ -10,8 +10,7 @@ use plotters::prelude::full_palette::LIGHTGREEN;
 use crate::common::{ProcData, single_statistic_u64, Statistic};
 use crate::vmstat::swap_inout_plot;
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
-use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
-use crate::add_list_of_u64_data_to_statistics;
+use crate::{add_list_of_u64_data_to_statistics, ARGS};
 use sysctl::{Ctl, Sysctl};
 use crate::pressure::pressure_memory_plot;
 use serde::{Serialize, Deserialize};
@@ -263,7 +262,7 @@ pub fn create_memory_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
     memory_plot(&mut multi_backend, 0);
 }
@@ -272,14 +271,14 @@ pub fn create_memory_psi_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     memory_plot(&mut multi_backend, 0);
     pressure_memory_plot(&mut multi_backend, 1);
 }
 
 pub fn create_memory_swap_plot( buffer: &mut [u8]) {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     memory_plot(&mut multi_backend, 0);
     swap_space_plot(&mut multi_backend, 1);
@@ -289,7 +288,7 @@ pub fn create_memory_swap_inout_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
     memory_plot(&mut multi_backend, 0);
     swap_inout_plot(&mut multi_backend, 1);

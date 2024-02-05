@@ -2,8 +2,8 @@ use chrono::{DateTime, Local};
 use plotters::style::full_palette::{BLUE_300, BLUE_900, ORANGE_900, ORANGE_300, LIGHTGREEN_900, LIGHTGREEN_300};
 use crate::meminfo::memory_plot;
 use crate::pressure::pressure_memory_plot;
-use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::ARGS;
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
@@ -576,7 +576,7 @@ pub fn create_memory_alloc_plot(
     buffer: &mut [u8],
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     memory_plot(&mut multi_backend, 0);
     pages_allocated_and_free(&mut multi_backend, 1)
@@ -586,7 +586,7 @@ pub fn create_memory_alloc_psi_plot(
     buffer: &mut [u8],
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
     memory_plot(&mut multi_backend, 0);
     pages_allocated_and_free(&mut multi_backend, 1);

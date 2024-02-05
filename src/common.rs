@@ -12,6 +12,7 @@ use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_da
 use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data, read_netdev_proc_data};
 use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data, read_vmstat_proc_data};
 use serde::{Serialize, Deserialize};
+use crate::ARGS;
 
 #[derive(Debug)]
 pub struct ProcData {
@@ -71,7 +72,7 @@ pub struct HistoricalDataTransit {
     pub vmstat: Vec<VmStatInfo>,
 }
 
-pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>, webserver: bool, archiver: bool) {
+pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) {
     let timestamp = Local::now();
     let proc_stat = read_stat_proc_data().await;
     let proc_schedstat = read_schedstat_proc_data().await;
@@ -93,7 +94,7 @@ pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String
         vmstat: proc_vmstat,
     };
     process_data(proc_data, statistics).await;
-    if webserver || archiver {
+    if ARGS.webserver || ARGS.archiver {
         add_to_history(statistics).await;
     }
 }

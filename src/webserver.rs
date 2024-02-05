@@ -11,9 +11,18 @@ use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot, c
 use crate::net_dev::create_networkdevice_plot;
 use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
 use crate::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi_plot};
-use crate::HISTORY;
-use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
+use crate::{HISTORY, ARGS};
 use log::info;
+use axum::{Router, routing::get};
+
+pub async fn webserver() {
+    let app = Router::new()
+        .route("/handler/:plot_1/:plot_2", get(handler_html))
+        .route("/plotter/:plot_1/:plot_2", get(handler_plotter))
+        .route("/", get(root_handler));
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", ARGS.webserver_port)).await.unwrap();
+    axum::serve(listener, app.into_make_service()).await.unwrap();
+}
 
 pub async fn root_handler() -> Html<String>
 {
@@ -88,7 +97,7 @@ pub async fn handler_html(Path((plot_1, plot_2)): Path<(String, String)>) -> Htm
 }
 
 pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> impl IntoResponse {
-    let mut buffer = vec![0; (GRAPH_BUFFER_WIDTH * GRAPH_BUFFER_HEIGHTH * 3).try_into().unwrap()];
+    let mut buffer = vec![0; (ARGS.graph_width * ARGS.graph_heighth * 3).try_into().unwrap()];
     match plot_1.as_str() {
         "networkdevice" => create_networkdevice_plot(&mut buffer, plot_2),
         "blockdevice" => create_blockdevice_plot(&mut buffer, plot_2),
@@ -105,7 +114,7 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer),
         &_ => todo!(),
     }
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(ARGS.graph_width, ARGS.graph_heighth, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()

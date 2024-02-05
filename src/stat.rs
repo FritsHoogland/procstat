@@ -10,8 +10,8 @@ use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, MESH_STYLE_FONT_SIZE, L
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::loadavg::load_plot;
 use crate::pressure::pressure_cpu_some_plot;
-use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::add_list_of_u64_data_to_statistics;
+use crate::ARGS;
 use serde::{Serialize, Deserialize};
 use log::debug;
 use proc_sys_parser::stat::ProcStat;
@@ -377,7 +377,7 @@ pub fn create_cpu_load_pressure_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
     cpu_total_plot(&mut multi_backend, 0);
     load_plot(&mut multi_backend, 1);
@@ -387,7 +387,7 @@ pub fn create_cpu_load_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     cpu_total_plot(&mut multi_backend, 0);
     load_plot(&mut multi_backend, 1);
@@ -396,7 +396,7 @@ pub fn create_cpu_plot(
     buffer: &mut [u8]
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
     cpu_total_plot(&mut multi_backend, 0);
 }

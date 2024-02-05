@@ -14,8 +14,8 @@ use serde::{Serialize, Deserialize};
 use crate::common::{ProcData, single_statistic_u64, single_statistic_option_u64};
 use crate::common::Statistic;
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
-use crate::{GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH};
 use crate::pressure::pressure_io_plot;
+use crate::ARGS;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct BlockDeviceInfo {
@@ -533,7 +533,7 @@ pub fn create_blockdevice_plot(
     device_name: String,
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let nr = if device_name == "TOTAL" { 3 } else { 4 };
     let mut multi_backend = backend.split_evenly((nr, 1));
     blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
@@ -547,7 +547,7 @@ pub fn create_blockdevice_plot_extra(
     device_name: String,
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let nr = if device_name == "TOTAL" { 3 } else { 5 };
     let mut multi_backend = backend.split_evenly((nr, 1));
     blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
@@ -564,7 +564,7 @@ pub fn create_blockdevice_psi_plot(
     device_name: String,
 )
 {
-    let backend = BitMapBackend::with_buffer(buffer, (GRAPH_BUFFER_WIDTH, GRAPH_BUFFER_HEIGHTH)).into_drawing_area();
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_heighth)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((4, 1));
     blockdevice_mbps_plot(&mut multi_backend, 0, device_name.clone());
     blockdevice_iops_plot(&mut multi_backend, 1, device_name.clone());

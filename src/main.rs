@@ -5,12 +5,11 @@ use std::collections::HashMap;
 use std::process;
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
-use axum::{Router, routing::get};
 use log::info;
 use env_logger;
-use std::sync::Arc;
 use chrono::Local;
 
+// this is a feature-gated option to perform memory usage analysis.
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -37,7 +36,6 @@ use net_dev::print_net_dev;
 use pressure::print_psi;
 use vmstat::print_vmstat;
 use loadavg::print_loadavg;
-use webserver::{root_handler, handler_html, handler_plotter};
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -48,9 +46,6 @@ static MESH_STYLE_FONT: &str = "monospace";
 static MESH_STYLE_FONT_SIZE: i32 = 17;
 static LABELS_STYLE_FONT: &str = "monospace";
 static LABELS_STYLE_FONT_SIZE: i32 = 15;
-
-static GRAPH_BUFFER_WIDTH: u32 = 1800;
-static GRAPH_BUFFER_HEIGHTH: u32 = 1500;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum OutputOptions {
@@ -98,7 +93,7 @@ enum OutputOptions {
     Schedstat,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Clone)]
 #[clap(version, about, long_about = None)]
 pub struct Opts {
     /// Interval
@@ -134,11 +129,19 @@ pub struct Opts {
     /// archiver interval minutes
     #[arg(short = 'I', long, value_name = "archiver interval (minutes)", default_value = "10")]
     archiver_interval: i64,
+    /// graph buffer width
+    #[arg(short = 'W', long, value_name = "graph buffer width", default_value = "1800")]
+    graph_width: u32,
+    /// graph buffer heighth
+    #[arg(short = 'H', long, value_name = "graph buffer heighth", default_value = "1200")]
+    graph_heighth: u32,
 }
 
 static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
     HistoricalData::new(Opts::parse().history)
 });
+
+static ARGS: Lazy<Opts> = Lazy::new(|| { Opts::parse() });
 
 #[tokio::main]
 async fn main() {
@@ -148,44 +151,29 @@ async fn main() {
     env_logger::init();
     info!("Start procstat");
     let timer = Instant::now();
-    let args = Opts::parse();
 
-    ctrlc::set_handler(move || {
-        if args.archiver {
-             archive(Local::now(), args.archiver_interval);
-        }
+    ctrlc::set_handler(move || { if ARGS.archiver { archive(Local::now()) }
         info!("End procstat, total time: {:?}", timer.elapsed());
-
         process::exit(0);
     }).unwrap();
 
     // spawn the webserver 
-    if args.webserver || args.read.is_some() {
-        let port = Arc::new(args.webserver_port);
-        let port_clone = Arc::clone(&port);
+    if ARGS.webserver || ARGS.read.is_some() {
         tokio::spawn( async move {
-            let app = Router::new()
-                .route("/handler/:plot_1/:plot_2", get(handler_html))
-                .route("/plotter/:plot_1/:plot_2", get(handler_plotter))
-                .route("/", get(root_handler));
-            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port_clone)).await.unwrap();
-            axum::serve(listener, app.into_make_service()).await.unwrap();
+            webserver::webserver().await;
         });
     }
     // spawn the archiver; only linux
-    if args.archiver { 
+    if ARGS.archiver { 
         tokio::spawn( async move { 
-            archiver::archiver(args.archiver_interval).await 
+            archiver::archiver().await 
         }); 
     };
 
-    if args.read.is_some() {
-        let reader_files = Arc::new(args.read.as_ref().unwrap());
-        let reader_files_clone = Arc::clone(&reader_files);
-        reader(reader_files_clone.to_string());
-    }
+    // reader function.
+    if ARGS.read.is_some() { reader(ARGS.read.as_ref().unwrap().to_string()) }
 
-    let mut interval = time::interval(Duration::from_secs(args.interval));
+    let mut interval = time::interval(Duration::from_secs(ARGS.interval));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let mut current_statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
@@ -193,13 +181,13 @@ async fn main() {
     loop
     {
         interval.tick().await;
-        if args.read.is_some() { continue };
+        if ARGS.read.is_some() { continue };
 
-        read_proc_data_and_process(&mut current_statistics, args.webserver, args.archiver).await;
+        read_proc_data_and_process(&mut current_statistics).await;
 
-        if ! args.deamon {
-            let print_header = output_counter % args.header_print == 0;
-            match args.output {
+        if ! ARGS.deamon {
+            let print_header = output_counter % ARGS.header_print == 0;
+            match ARGS.output {
                 OutputOptions::SarU => print_all_cpu(&current_statistics, "sar-u", print_header).await,
                 OutputOptions::SarB => print_vmstat(&current_statistics, "sar-B", print_header).await,
                 OutputOptions::Sarb => print_diskstats(&current_statistics, "sar-b", print_header).await,
@@ -230,7 +218,7 @@ async fn main() {
             }
             output_counter += 1;
 
-            if let Some(until) = args.until {
+            if let Some(until) = ARGS.until {
                 if until < output_counter { break };
             };
         }
