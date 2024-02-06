@@ -537,6 +537,54 @@ fn blockdevice_latency_queuedepth_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "queue depth", min_queue_depth, max_queue_depth, latest_queue_depth))
         .legend(move |(x, y)| TriangleMarker::new((x, y), 4, BLACK.filled()));
+    //
+    // inflight writes
+    let min_inflight_writes = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_writes > 0_f64)
+        .map(|blockdevice| blockdevice.inflight_writes)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_inflight_writes = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .map(|blockdevice| blockdevice.inflight_writes)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let latest_inflight_writes = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .last()
+        .map_or(0_f64, |latest| latest.inflight_writes);
+    contextarea.draw_secondary_series(historical_data_read
+            .iter()
+            .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_writes > 0_f64)
+            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_writes), 3, RED.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "inflight writes", min_inflight_writes, max_inflight_writes, latest_inflight_writes))
+        .legend(move |(x, y)| TriangleMarker::new((x, y), 3, RED.filled()));
+    //
+    // inflight reads
+    let min_inflight_reads = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_reads > 0_f64)
+        .map(|blockdevice| blockdevice.inflight_reads)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_inflight_reads = historical_data_read.iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .map(|blockdevice| blockdevice.inflight_reads)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let latest_inflight_reads = historical_data_read
+        .iter()
+        .filter(|blockdevice| blockdevice.device_name == device_name)
+        .last()
+        .map_or(0_f64, |latest| latest.inflight_reads);
+    contextarea.draw_secondary_series(historical_data_read
+            .iter()
+            .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_reads > 0_f64)
+            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_reads), 2, GREEN.filled())))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "inflight reads", min_inflight_reads, max_inflight_reads, latest_inflight_reads))
+        .legend(move |(x, y)| TriangleMarker::new((x, y), 3, GREEN.filled()));
     // max queue size
     // It wouldn't make sense to use total, because it combines different blockdevices.
     if device_name != "TOTAL" {
