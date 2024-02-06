@@ -197,6 +197,8 @@ pub struct VmStatInfo {
     pub zswpin: f64,
     pub zswpout: f64,
     pub nr_unstable: f64,
+    pub pgfault_delta: f64,
+    pub pgmajfault_delta: f64,
 }
 
 pub async fn read_vmstat_proc_data() -> ProcVmStat {
@@ -210,8 +212,7 @@ pub async fn process_vmstat_data(proc_data: &ProcData, statistics: &mut HashMap<
     add_list_of_option_u64_data_to_statistics!(vmstat, "", proc_data.timestamp, proc_data, vmstat, statistics, workingset_nodes, workingset_restore_anon, workingset_refault_file, workingset_activate_anon, workingset_activate_file, workingset_restore_anon, workingset_restore_file, nr_file_hugepages, nr_file_pmdmapped, nr_throttled_written, nr_kernel_misc_reclaimable, nr_foll_pin_acquired, nr_foll_pin_released, nr_shadow_call_stack, nr_sec_page_table_pages, nr_swapcached, pgpromote_success, pgpromote_candidate, pgalloc_device, pgskip_device, pgreuse, pgsteal_khugepaged, pgdemote_kswapd, pgdemote_direct, pgdemote_khugepaged, pgscan_khugepaged, pgscan_anon, pgscan_file, pgsteal_anon, pgsteal_file, slabs_scanned, thp_migration_success, thp_migration_fail, thp_migration_split, cma_alloc_success, cma_alloc_fail, thp_fault_fallback_charge, thp_file_fallback, thp_file_fallback_charge, thp_scan_exceed_none_pte, thp_scan_exceed_swap_pte, thp_scan_exceed_share_pte, ksm_swpin_copy, cow_ksm, zswpin, zswpout);
 }
 
-pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String), Statistic>)
-{
+pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
     if !statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string())).unwrap().updated_value { return };
     let timestamp = statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string())).unwrap().last_timestamp;
 
@@ -230,6 +231,8 @@ pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String)
             )*
         };
     }
+    let pgfault_delta = statistics.get(&("vmstat".to_string(), "".to_string(), "pgfault".to_string())).unwrap_or(&Statistic::default()).delta_value;
+    let pgmajfault_delta = statistics.get(&("vmstat".to_string(), "".to_string(), "pgmajfault".to_string())).unwrap_or(&Statistic::default()).delta_value;
     generate_assignments_for_history_addition_delta_value!(oom_kill, pgfree, pgalloc_dma, pgalloc_dma32, pgalloc_normal, pgalloc_device, pgalloc_movable, pgscan_kswapd, pgscan_direct, pgscan_khugepaged, pgsteal_khugepaged, pgsteal_kswapd, pgsteal_direct);
     HISTORY.vmstat.write().unwrap().push_back( VmStatInfo {
         timestamp,
@@ -409,6 +412,8 @@ pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String)
         zswpin,
         zswpout,
         nr_unstable,
+        pgfault_delta,
+        pgmajfault_delta,
     });
     debug!("{:?}", HISTORY.vmstat.read().unwrap());
 }
@@ -734,7 +739,12 @@ pub fn pages_allocated_and_free(
         .map(|vmstat| (vmstat.pgalloc_dma + vmstat.pgalloc_dma32 + vmstat.pgalloc_normal + vmstat.pgalloc_device + vmstat.pgalloc_movable) * 1.1_f64 )
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
-    let high_value = high_value_free.max(high_value_alloc);
+    let high_value_fault = historical_data_read
+        .iter()
+        .map(|vmstat| vmstat.pgfault_delta * 1.1_f64 )
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let high_value = high_value_free.max(high_value_alloc).max(high_value_fault);
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -764,7 +774,7 @@ pub fn pages_allocated_and_free(
         .unwrap()
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
      
-    //
+    // pgfree
     let min_free = historical_data_read
         .iter()
         .filter(|vmstat| vmstat.pgfree > 0_f64)
@@ -783,7 +793,26 @@ pub fn pages_allocated_and_free(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pgfree", min_free, max_free, latest.map_or(0_f64, |latest| latest.pgfree)))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
-    //
+    // pgfault (_delta)
+    let min_free = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pgfault_delta > 0_f64)
+        .map(|vmstat| vmstat.pgfault_delta)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_free = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.pgfault_delta > 0_f64)
+        .map(|vmstat| vmstat.pgfault_delta)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read
+            .iter()
+            .map(|vmstat| (vmstat.timestamp, vmstat.pgfault_delta)), ShapeStyle { color: BLACK.into(), filled: true, stroke_width: 2 }))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pgfault", min_free, max_free, latest.map_or(0_f64, |latest| latest.pgfault_delta)))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // pgalloc
     let min_alloc = historical_data_read
         .iter()
         .filter(|vmstat| (vmstat.pgalloc_dma + vmstat.pgalloc_dma32 + vmstat.pgalloc_normal + vmstat.pgalloc_device + vmstat.pgalloc_movable) > 0_f64)

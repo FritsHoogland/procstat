@@ -52,7 +52,7 @@ pub fn archive(high_time: DateTime<Local>) { let mut transition = HistoricalData
     write(filename, serde_json::to_string(&transition).unwrap()).unwrap();
 }
 
-pub fn reader(filenames: String) {
+pub async fn reader(filenames: String) {
     filenames.split(',').for_each(|file| {
         if Path::new(&file).try_exists().is_ok() {
             let transition: HistoricalDataTransit = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap_or_else(|e| panic!("{}", e));
@@ -69,4 +69,12 @@ pub fn reader(filenames: String) {
         };
     });
     println!("All files loaded.");
+
+    // this sets up an endless loop
+    let mut interval = time::interval(std::time::Duration::from_secs(ARGS.interval));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        interval.tick().await;
+    };
 }
+

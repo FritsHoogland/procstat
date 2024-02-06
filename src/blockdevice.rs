@@ -633,7 +633,8 @@ fn blockdevice_mbps_plot(
         .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
     //
     // total MBPS
-    // this is a line graph, so total MBPS = write + discard
+    // this is a line graph, so total MBPS = read + write bytes.
+    // discards to not add to bandwidth.
     let min_total_mbps = historical_data_read
         .iter()
         .filter(|blockdevice| blockdevice.device_name == device_name && (blockdevice.writes_bytes + blockdevice.reads_bytes) > 0_f64)

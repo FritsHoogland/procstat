@@ -171,17 +171,18 @@ async fn main() {
     };
 
     // reader function.
-    if ARGS.read.is_some() { reader(ARGS.read.as_ref().unwrap().to_string()) }
+    // execution loops in the reader if called.
+    if ARGS.read.is_some() { 
+        reader(ARGS.read.as_ref().unwrap().to_string()).await; 
+    }
 
     let mut interval = time::interval(Duration::from_secs(ARGS.interval));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let mut current_statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
     let mut output_counter = 0_u64;
-    loop
-    {
+    loop {
         interval.tick().await;
-        if ARGS.read.is_some() { continue };
 
         read_proc_data_and_process(&mut current_statistics).await;
 
@@ -223,4 +224,5 @@ async fn main() {
             };
         }
     }
+    info!("End procstat, total time: {:?}", timer.elapsed());
 }
