@@ -1,22 +1,19 @@
 
 use log::debug;
-use tokio::time::{self, MissedTickBehavior};
-use tokio::time::Duration as TokioDuration;
-use chrono::{Duration, DurationRound};
-use chrono::{DateTime, Local};
-use crate::common::HistoricalDataTransit;
-use crate::HISTORY;
-use crate::stat::CpuStat;
-use crate::meminfo::MemInfo;
-use crate::blockdevice::BlockDeviceInfo;
-use crate::loadavg::LoadavgInfo;
-use crate::pressure::PressureInfo;
-use crate::net_dev::NetworkDeviceInfo;
-use crate::vmstat::VmStatInfo;
+use tokio::time::{self, MissedTickBehavior, Duration as TokioDuration};
+use chrono::{Duration, DurationRound, DateTime, Local};
+use crate::processor::HistoricalDataTransit;
+use crate::{HISTORY, ARGS};
+use crate::processor::stat::CpuStat;
+use crate::processor::meminfo::MemInfo;
+use crate::processor::blockdevice::BlockDeviceInfo;
+use crate::processor::loadavg::LoadavgInfo;
+use crate::processor::pressure::PressureInfo;
+use crate::processor::net_dev::NetworkDeviceInfo;
+use crate::processor::vmstat::VmStatInfo;
 use std::env::current_dir;
 use std::path::Path;
 use std::fs::write;
-use crate::ARGS;
 
 pub async fn archiver() {
     let mut interval = time::interval(TokioDuration::from_secs(60));
@@ -54,7 +51,7 @@ pub fn archive(high_time: DateTime<Local>) { let mut transition = HistoricalData
 
 pub async fn reader(filenames: String) {
     filenames.split(',').for_each(|file| {
-        if Path::new(&file).try_exists().is_ok() {
+        if Path::new(&file).exists() {
             let transition: HistoricalDataTransit = serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap_or_else(|e| panic!("{}", e));
             transition.cpu.iter().for_each(|row| { HISTORY.cpu.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
             transition.memory.iter().for_each(|row| { HISTORY.memory.write().unwrap().push_back(row.clone()).unwrap_or_default(); });
@@ -70,7 +67,7 @@ pub async fn reader(filenames: String) {
     });
     println!("All files loaded.");
 
-    // this sets up an endless loop
+    // this sets up an endless loop that ticks with the set interval.
     let mut interval = time::interval(std::time::Duration::from_secs(ARGS.interval));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {

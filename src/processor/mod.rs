@@ -1,16 +1,25 @@
-use crate::stat::CpuStat;
+pub mod stat;
+pub mod blockdevice;
+pub mod loadavg;
+pub mod meminfo;
+pub mod net_dev;
+pub mod pressure;
+pub mod schedstat;
+pub mod vmstat;
+
+use stat::CpuStat;
 use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
-use crate::stat::{process_stat_data, add_cpu_total_to_history, read_stat_proc_data};
-use crate::schedstat::{process_schedstat_data, read_schedstat_proc_data};
-use crate::meminfo::{process_meminfo_data, read_meminfo_proc_data, add_memory_to_history, MemInfo};
-use crate::blockdevice::{add_blockdevices_to_history, read_blockdevice_sys_data, BlockDeviceInfo, process_blockdevice_data};
-use crate::loadavg::{process_loadavg_data, read_loadavg_proc_data, add_loadavg_to_history, LoadavgInfo};
-use crate::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data, read_pressure_proc_data};
-use crate::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data, read_netdev_proc_data};
-use crate::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data, read_vmstat_proc_data};
+use stat::{process_stat_data, add_cpu_total_to_history, read_stat_proc_data};
+use crate::processor::schedstat::{process_schedstat_data, read_schedstat_proc_data};
+use crate::processor::meminfo::{process_meminfo_data, read_meminfo_proc_data, add_memory_to_history, MemInfo};
+use crate::processor::blockdevice::{add_blockdevices_to_history, read_blockdevice_sys_data, BlockDeviceInfo, process_blockdevice_data};
+use crate::processor::loadavg::{process_loadavg_data, read_loadavg_proc_data, add_loadavg_to_history, LoadavgInfo};
+use crate::processor::pressure::{add_pressure_to_history, PressureInfo, process_pressure_data, read_pressure_proc_data};
+use crate::processor::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo, process_net_dev_data, read_netdev_proc_data};
+use crate::processor::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data, read_vmstat_proc_data};
 use serde::{Serialize, Deserialize};
 use crate::ARGS;
 

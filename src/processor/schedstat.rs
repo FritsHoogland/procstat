@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::common::{ProcData, single_statistic_u64, Statistic};
+use crate::processor::{ProcData, single_statistic_u64, Statistic};
 use log::debug;
 use proc_sys_parser::schedstat::ProcSchedStat;
 

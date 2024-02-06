@@ -1,19 +1,22 @@
-use std::collections::BTreeSet;
-use std::io::Cursor;
-use std::thread::sleep;
-use std::time::Duration;
-use axum::{response::IntoResponse, response::Html};
-use axum::extract::Path;
+pub mod stat;
+pub mod blockdevice;
+pub mod meminfo;
+pub mod net_dev;
+pub mod vmstat;
+pub mod pressure;
+pub mod loadavg;
+
+use std::{collections::BTreeSet, io::Cursor, thread::sleep, time::Duration};
+use axum::{response::IntoResponse, response::Html, extract::Path, Router, routing::get};
 use image::{DynamicImage, ImageOutputFormat};
-use crate::stat::create_cpu_plot;
-use crate::meminfo::{create_memory_plot, create_memory_psi_plot, create_memory_swap_plot, create_memory_swap_inout_plot};
-use crate::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot, create_blockdevice_plot_extra};
-use crate::net_dev::create_networkdevice_plot;
-use crate::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
-use crate::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi_plot};
+use crate::webserver::stat::create_cpu_plot;
+use crate::webserver::meminfo::{create_memory_plot, create_memory_psi_plot, create_memory_swap_plot, create_memory_swap_inout_plot};
+use crate::webserver::blockdevice::{create_blockdevice_plot, create_blockdevice_psi_plot, create_blockdevice_plot_extra};
+use crate::webserver::net_dev::create_networkdevice_plot;
+use crate::webserver::stat::{create_cpu_load_plot, create_cpu_load_pressure_plot};
+use crate::webserver::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi_plot};
 use crate::{HISTORY, ARGS};
 use log::info;
-use axum::{Router, routing::get};
 
 pub async fn webserver() {
     let app = Router::new()
@@ -97,7 +100,7 @@ pub async fn handler_html(Path((plot_1, plot_2)): Path<(String, String)>) -> Htm
 }
 
 pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> impl IntoResponse {
-    let mut buffer = vec![0; (ARGS.graph_width * ARGS.graph_heighth * 3).try_into().unwrap()];
+    let mut buffer = vec![0; (ARGS.graph_width * ARGS.graph_height * 3).try_into().unwrap()];
     match plot_1.as_str() {
         "networkdevice" => create_networkdevice_plot(&mut buffer, plot_2),
         "blockdevice" => create_blockdevice_plot(&mut buffer, plot_2),
@@ -114,7 +117,7 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer),
         &_ => todo!(),
     }
-    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(ARGS.graph_width, ARGS.graph_heighth, buffer).unwrap());
+    let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(ARGS.graph_width, ARGS.graph_height, buffer).unwrap());
     let mut cursor = Cursor::new(Vec::new());
     rgb_image.write_to(&mut cursor, ImageOutputFormat::Png).unwrap();
     cursor.into_inner()
