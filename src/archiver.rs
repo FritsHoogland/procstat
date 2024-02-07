@@ -2,6 +2,10 @@
 use log::debug;
 use tokio::time::{self, MissedTickBehavior, Duration as TokioDuration};
 use chrono::{Duration, DurationRound, DateTime, Local};
+use std::env::current_dir;
+use std::path::Path;
+use std::fs::write;
+
 use crate::processor::HistoricalDataTransit;
 use crate::{HISTORY, ARGS};
 use crate::processor::stat::CpuStat;
@@ -11,9 +15,6 @@ use crate::processor::loadavg::LoadavgInfo;
 use crate::processor::pressure::PressureInfo;
 use crate::processor::net_dev::NetworkDeviceInfo;
 use crate::processor::vmstat::VmStatInfo;
-use std::env::current_dir;
-use std::path::Path;
-use std::fs::write;
 
 pub async fn archiver() {
     let mut interval = time::interval(TokioDuration::from_secs(60));

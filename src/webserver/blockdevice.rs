@@ -4,8 +4,7 @@ use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::Uppe
 use plotters::coord::Shift;
 use plotters::element::Rectangle;
 use plotters::prelude::{*, full_palette::PURPLE};
-use plotters::style::colors::full_palette::RED_100;
-use plotters::style::full_palette::GREY_100;
+use plotters::style::colors::full_palette::{RED_100, GREY_100, GREEN_500};
 use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
 use crate::webserver::pressure::pressure_io_plot;
 use crate::ARGS;
@@ -99,9 +98,9 @@ fn blockdevice_mbps_plot(
         .x_desc("Time")
         .y_desc("MBPS")
         .y_label_formatter(&|mbps| {
-            if mbps == &0_f64  { format!("{:5.0}", mbps) } else
-            if mbps  < &1_f64  { format!("{:5.3}", mbps) } else 
-                               { format!("{:5.0}", mbps) }
+                 if mbps == &0_f64  { format!("{:5.0}", mbps) }
+            else if mbps  < &1_f64  { format!("{:5.3}", mbps) }
+            else                    { format!("{:5.0}", mbps) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -230,9 +229,9 @@ fn blockdevice_iops_plot(
         .x_desc("Time")
         .y_desc("IOPS")
         .y_label_formatter(&|iops| {
-            if iops == &0_f64  { format!("{:5.0}", iops) } else
-            if iops  < &10_f64 { format!("{:5.1}", iops) } else 
-                               { format!("{:5.0}", iops) }
+                 if iops == &0_f64  { format!("{:5.0}", iops) }
+            else if iops  < &10_f64 { format!("{:5.1}", iops) }
+            else                    { format!("{:5.0}", iops) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -412,10 +411,10 @@ fn blockdevice_latency_queuedepth_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_label_formatter(&|latency| {
-            if latency == &0_f64    { format!("{:5.0} ms", latency) } else
-            if latency  < &0.1_f64  { format!("{:5.3} ms", latency) } else 
-            if latency  < &10_f64   { format!("{:5.1} ms", latency) } else
-                                    { format!("{:5.0} ms", latency) }
+                 if latency == &0_f64    { format!("{:5.0} ms", latency) }
+            else if latency  < &0.1_f64  { format!("{:5.3} ms", latency) }
+            else if latency  < &10_f64   { format!("{:5.1} ms", latency) }
+            else                         { format!("{:5.0} ms", latency) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -533,10 +532,10 @@ fn blockdevice_latency_queuedepth_plot(
     let latest_queue_depth = historical_data_read.iter().filter(|blockdevice| blockdevice.device_name == device_name).last().map_or(0_f64, |latest| latest.ios_weighted_time_spent_ms) / 1000_f64;
     contextarea.draw_secondary_series(historical_data_read.iter()
                                                 .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.ios_weighted_time_spent_ms > 0_f64)
-                                                .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.ios_weighted_time_spent_ms / 1000_f64), 4, BLACK.filled())))
+                                                .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.ios_weighted_time_spent_ms / 1000_f64), 5, BLACK.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "queue depth", min_queue_depth, max_queue_depth, latest_queue_depth))
-        .legend(move |(x, y)| TriangleMarker::new((x, y), 4, BLACK.filled()));
+        .legend(move |(x, y)| TriangleMarker::new((x, y), 5, BLACK.filled()));
     //
     // inflight writes
     let min_inflight_writes = historical_data_read.iter()
@@ -557,10 +556,10 @@ fn blockdevice_latency_queuedepth_plot(
     contextarea.draw_secondary_series(historical_data_read
             .iter()
             .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_writes > 0_f64)
-            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_writes), 3, RED.filled())))
+            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_writes), 4, RED.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "inflight writes", min_inflight_writes, max_inflight_writes, latest_inflight_writes))
-        .legend(move |(x, y)| TriangleMarker::new((x, y), 3, RED.filled()));
+        .legend(move |(x, y)| TriangleMarker::new((x, y), 4, RED.filled()));
     //
     // inflight reads
     let min_inflight_reads = historical_data_read.iter()
@@ -581,10 +580,10 @@ fn blockdevice_latency_queuedepth_plot(
     contextarea.draw_secondary_series(historical_data_read
             .iter()
             .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.inflight_reads > 0_f64)
-            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_reads), 2, GREEN.filled())))
+            .map(|blockdevice| TriangleMarker::new((blockdevice.timestamp, blockdevice.inflight_reads), 3, GREEN_500.filled())))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "inflight reads", min_inflight_reads, max_inflight_reads, latest_inflight_reads))
-        .legend(move |(x, y)| TriangleMarker::new((x, y), 3, GREEN.filled()));
+        .legend(move |(x, y)| TriangleMarker::new((x, y), 3, GREEN_500.filled()));
     // max queue size
     // It wouldn't make sense to use total, because it combines different blockdevices.
     if device_name != "TOTAL" {
@@ -751,161 +750,36 @@ fn blockdevice_extra(
         .filter(|blockdevice| blockdevice.device_name == device_name)
         .last();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("device:             {:>10}", device_name), (100,0), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("device:              {:>10}", device_name), (100,0), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("major:minor:        {:>10}", latest.map_or("".to_string(), |d| d.device_major_minor.clone())), (100,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("major:minor:         {:>10}", latest.map_or("".to_string(), |d| d.device_major_minor.clone())), (100,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("removable:          {:>10}", latest.map_or(0_f64, |d| d.removable)), (100,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("removable:           {:>10}", latest.map_or(0_f64, |d| d.removable)), (100,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("readonly:           {:>10}", latest.map_or(0_f64, |d| d.ro)), (100,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("readonly:            {:>10}", latest.map_or(0_f64, |d| d.ro)), (100,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("rotational:         {:>10}", latest.map_or(0_f64, |d| d.queue_rotational)), (100,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("rotational:          {:>10}", latest.map_or(0_f64, |d| d.queue_rotational)), (100,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("dax:                {:>10}", latest.map_or(0_f64, |d| d.queue_dax)), (100,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("dax:                 {:>10}", latest.map_or(0_f64, |d| d.queue_dax)), (100,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("nr_requests:        {:>10}", latest.map_or(0_f64, |d| d.queue_nr_requests)), (100,140), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("nr_requests:         {:>10}", latest.map_or(0_f64, |d| d.queue_nr_requests)), (100,140), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("max_sectors_kb:     {:>10}", latest.map_or(0_f64, |d| d.queue_max_sectors_kb)), (100,160), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("max_sectors_kb:      {:>10}", latest.map_or(0_f64, |d| d.queue_max_sectors_kb)), (100,160), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("max_hw_sectors_kb:  {:>10}", latest.map_or(0_f64, |d| d.queue_max_hw_sectors_kb)), (100,180), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("max_hw_sectors_kb:   {:>10}", latest.map_or(0_f64, |d| d.queue_max_hw_sectors_kb)), (100,180), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
 
     multi_backend[backend_number]
-        .draw(&Text::new(format!("hw_sector_size:     {:>10}", latest.map_or(0_f64, |d| d.queue_hw_sector_size)), (600,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("hw_sector_size:      {:>10}", latest.map_or(0_f64, |d| d.queue_hw_sector_size)), (600,40), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("logical_block_size  {:>10}", latest.map_or(0_f64, |d| d.queue_logical_block_size)), (600,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("logical_block_size   {:>10}", latest.map_or(0_f64, |d| d.queue_logical_block_size)), (600,60), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("nomerges            {:>10}", latest.map_or(0_f64, |d| d.queue_nomerges)), (600,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("nomerges             {:>10}", latest.map_or(0_f64, |d| d.queue_nomerges)), (600,80), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("physical_block_size {:>10}", latest.map_or(0_f64, |d| d.queue_physical_block_size)), (600,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+        .draw(&Text::new(format!("physical_block_size  {:>10}", latest.map_or(0_f64, |d| d.queue_physical_block_size)), (600,100), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
     multi_backend[backend_number]
-        .draw(&Text::new(format!("read_ahead_kb       {:>10}", latest.map_or(0_f64, |d| d.queue_read_ahead_kb)), (600,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
-    //multi_backend.fill(WHITE);
-    /*
-    multi_backend[backend_number].draw(&MultiLineText::<(i32, i32), &str>::new(
-        (100,100),
-        "test",
-    )).unwrap();
-    */
-        //(LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE).into_font(),
-    /*
-    let start_time = historical_data_read
-        .iter()
-        .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices| blockdevices.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices| blockdevices.timestamp)
-        .max()
-        .unwrap_or_default();
-    let high_value = historical_data_read
-        .iter()
-        .filter(|blockdevices| blockdevices.device_name == device_name)
-        .map(|blockdevices| ((blockdevices.reads_bytes + blockdevices.writes_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    let latest = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name)
-        .last()
-        .unwrap();
-
-    // create the plot
-    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
-        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
-        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
-        .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
-        .caption(format!("Blockdevice: {} info", device_name), (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        //.build_cartesian_2d(start_time..end_time, 0_f64..high_value)
-        .unwrap();
-
-    contextarea.configure_mesh()
-        .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
-        .x_desc("Time")
-        .y_desc("MBPS")
-        .y_label_formatter(&|mbps| {
-            if mbps == &0_f64  { format!("{:5.0}", mbps) } else
-            if mbps  < &1_f64  { format!("{:5.3}", mbps) } else 
-                               { format!("{:5.0}", mbps) }
-        })
-        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
-        .draw()
-        .unwrap();
-    //
-    // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
-                                                                .take(1)
-                                                                .map(|blockdevice| (blockdevice.timestamp, blockdevice.reads_bytes)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1 }))
-        .unwrap()
-        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
-    //
-    // total MBPS
-    // this is a line graph, so total MBPS = write + discard
-    let min_total_mbps = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && (blockdevice.writes_bytes + blockdevice.reads_bytes) > 0_f64)
-        .map(|blockdevice| (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    let max_total_mbps = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && (blockdevice.writes_bytes + blockdevice.reads_bytes) > 0_f64)
-        .map(|blockdevice| (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter()
-                                                .filter(|blockdevice| blockdevice.device_name == device_name)
-                                                .map(|blockdevice| (blockdevice.timestamp, (blockdevice.writes_bytes + blockdevice.reads_bytes) / (1024_f64 * 1024_f64))), BLACK))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "total", min_total_mbps, max_total_mbps, ((latest.writes_bytes + latest.reads_bytes) / (1024_f64 * 1024_f64))))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
-    // write MBPS
-    let min_write_mbps = historical_data_read.iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
-        .map(|blockdevice| blockdevice.writes_bytes / (1024_f64 * 1024_f64))
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    let max_write_mbps = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
-        .map(|blockdevice| blockdevice.writes_bytes / (1024_f64 * 1024_f64))
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    contextarea.draw_series(historical_data_read.iter()
-                                                .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.writes_bytes > 0_f64)
-                                                .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.writes_bytes / (1024_f64 * 1024_f64)), 4, RED.filled())))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "write", min_write_mbps, max_write_mbps, latest.writes_bytes / (1024_f64 * 1024_f64)))
-        .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
-    // read MBPS
-    let min_read_mbps = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
-        .map(|blockdevice| blockdevice.reads_bytes / (1024_f64 * 1024_f64))
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    let max_read_mbps = historical_data_read
-        .iter()
-        .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
-        .map(|blockdevice| blockdevice.reads_bytes / (1024_f64 * 1024_f64))
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap_or_default();
-    contextarea.draw_series(historical_data_read.iter()
-                                                .filter(|blockdevice| blockdevice.device_name == device_name && blockdevice.reads_bytes > 0_f64)
-                                                .map(|blockdevice| Circle::new((blockdevice.timestamp, blockdevice.reads_bytes / (1024_f64 * 1024_f64)), 3, GREEN.filled())))
-        .unwrap()
-        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "read", min_read_mbps, max_read_mbps, latest.reads_bytes / (1024_f64 * 1024_f64)))
-        .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
-    // legend
-    contextarea.configure_series_labels()
-        .border_style(BLACK)
-        .background_style(WHITE.mix(0.7))
-        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
-        .position(UpperLeft)
-        .draw()
-        .unwrap();
-    */
+        .draw(&Text::new(format!("discard_max_bytes    {:>10}", latest.map_or(0_f64, |d| d.queue_discard_max_bytes)), (600,120), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("discard_max_hw_bytes {:>10}", latest.map_or(0_f64, |d| d.queue_discard_max_hw_bytes)), (600,140), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
+    multi_backend[backend_number]
+        .draw(&Text::new(format!("read_ahead_kb        {:>10}", latest.map_or(0_f64, |d| d.queue_read_ahead_kb)), (600,160), (MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE).into_font())).unwrap();
 }

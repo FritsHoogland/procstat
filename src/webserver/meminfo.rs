@@ -90,9 +90,9 @@ pub fn memory_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
-            if size < &1024_f64  { format!("{:5.0} MB", size) } else 
-            if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) } else 
-                                 { format!("{:5.0} GB", size / 1024_f64) }
+                 if size < &1024_f64  { format!("{:5.0} MB", size) }
+            else if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) }
+            else                      { format!("{:5.0} GB", size / 1024_f64) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -299,9 +299,9 @@ fn swap_space_plot(
         .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
-            if size < &1024_f64  { format!("{:5.0} MB", size) } else 
-            if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) } else 
-                                 { format!("{:5.0} GB", size / 1024_f64) }
+                 if size < &1024_f64  { format!("{:5.0} MB", size) }
+            else if size < &10240_f64 { format!("{:5.1} GB", size / 1024_f64) }
+            else                      { format!("{:5.0} GB", size / 1024_f64) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()

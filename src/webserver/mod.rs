@@ -38,24 +38,54 @@ pub async fn root_handler() -> Html<String>
             sleep(Duration::from_secs(1));
         }
     }
-    let unique_blockdevices: Vec<_> = HISTORY.blockdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
-    let mut html_for_blockdevices = String::new();
-    for device in &unique_blockdevices {
-        html_for_blockdevices += format!(r##"<li><a href="/handler/blockdevice/{}" target="right">Blockdevice {}</a></li>"##, device, device).as_str();
-    }
-    let mut html_for_blockdevices_psi = String::new();
-    for device in &unique_blockdevices {
-        html_for_blockdevices_psi += format!(r##"<li><a href="/handler/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a></li>"##, device, device).as_str();
-    }
-    let mut html_for_blockdevices_extra = String::new();
-    for device in unique_blockdevices {
-        html_for_blockdevices_extra += format!(r##"<li><a href="/handler/blockdevice_extra/{}" target="right">Blockdevice-extra {}</a></li>"##, device, device).as_str();
-    }
-    let unique_networkdevices: Vec<_> = HISTORY.networkdevices.read().unwrap().iter().map(|device| device.device_name.clone()).collect::<BTreeSet<String>>().into_iter().collect();
-    let mut html_for_networkdevices = String::new();
-    for device in unique_networkdevices {
-        html_for_networkdevices += format!(r##"<li><a href="/handler/networkdevice/{}" target="right">Networkdevice {}</a></li>"##, device, device).as_str();
-    }
+
+    let html_for_blockdevices = HISTORY.blockdevices
+        .read()
+        .unwrap()
+        .iter()
+        .map(|d| d.device_name.clone())
+        .collect::<BTreeSet<String>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .iter()
+        .map(|d| format!(r##"<li><a href="/handler/blockdevice/{}" target="right">Blockdevice {}</a>"##, d, d))
+        .collect::<String>();
+
+    let html_for_blockdevices_psi = HISTORY.blockdevices
+        .read()
+        .unwrap()
+        .iter()
+        .map(|d| d.device_name.clone())
+        .collect::<BTreeSet<String>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .iter()
+        .map(|d| format!(r##"<li><a href="/handler/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a>"##, d, d))
+        .collect::<String>();
+
+    let html_for_blockdevices_extra = HISTORY.blockdevices
+        .read()
+        .unwrap()
+        .iter()
+        .map(|d| d.device_name.clone())
+        .collect::<BTreeSet<String>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .iter()
+        .map(|d| format!(r##"<li><a href="/handler/blockdevice_extra/{}" target="right">Blockdevice-extra {}</a>"##, d, d))
+        .collect::<String>();
+
+    let html_for_networkdevices = HISTORY.networkdevices
+        .read()
+        .unwrap()
+        .iter()
+        .map(|d| d.device_name.clone())
+        .collect::<BTreeSet<String>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .iter()
+        .map(|d| format!(r##"<li><a href="/handler/networkdevice/{}" target="right">Networkdevice {}</a>"##, d, d))
+        .collect::<String>();
 
     format!(r##"<!doctype html>
  <html>

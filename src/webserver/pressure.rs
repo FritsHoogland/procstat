@@ -126,11 +126,11 @@ pub fn pressure_cpu_some_plot(
         .x_desc("Time")
         .y_desc("Time per second")
         .y_label_formatter(&|seconds| {
-            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
-            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
-            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
-            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
-                                      { format!("{:5.0} s", seconds) }
+                 if seconds == &0_f64      { format!("{:5.0} s", seconds) }
+            else if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) }
+            else if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) }
+            else if seconds  < &1_f64      { format!("{:5.1} s", seconds) }
+            else                           { format!("{:5.0} s", seconds) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -138,9 +138,9 @@ pub fn pressure_cpu_some_plot(
     contextarea.configure_secondary_axes()
         .y_desc("Percent")
         .y_label_formatter(&|percent| {
-            if percent == &0_f64      { format!("{:5.0} %", percent) } else
-            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
-                                      { format!("{:5.0} %", percent) }
+                 if percent == &0_f64      { format!("{:5.0} %", percent) }
+            else if percent  < &10_f64     { format!("{:5.1} %", percent) }
+            else                           { format!("{:5.0} %", percent) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -239,11 +239,11 @@ pub fn pressure_memory_plot(
         .x_desc("Time")
         .y_desc("Time per second")
         .y_label_formatter(&|seconds| {
-            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
-            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
-            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
-            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
-                                      { format!("{:5.0} s", seconds) }
+                 if seconds == &0_f64      { format!("{:5.0} s", seconds) }
+            else if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) }
+            else if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) }
+            else if seconds  < &1_f64      { format!("{:5.1} s", seconds) }
+            else                           { format!("{:5.0} s", seconds) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -251,9 +251,9 @@ pub fn pressure_memory_plot(
     contextarea.configure_secondary_axes()
         .y_desc("Percent")
         .y_label_formatter(&|percent| {
-            if percent == &0_f64      { format!("{:5.0} %", percent) } else
-            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
-                                      { format!("{:5.0} %", percent) }
+                 if percent == &0_f64      { format!("{:5.0} %", percent) }
+            else if percent  < &10_f64     { format!("{:5.1} %", percent) }
+            else                           { format!("{:5.0} %", percent) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
@@ -358,20 +358,20 @@ pub fn pressure_io_plot(
         .x_desc("Time")
         .y_desc("Time per second")
         .y_label_formatter(&|seconds| {
-            if seconds == &0_f64      { format!("{:5.0} s", seconds) } else
-            if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) } else 
-            if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) } else 
-            if seconds  < &1_f64      { format!("{:5.1} s", seconds) } else 
-                                      { format!("{:5.0} s", seconds) }
+                 if seconds == &0_f64      { format!("{:5.0} s", seconds) }
+            else if seconds  < &0.01_f64   { format!("{:5.5} s", seconds) }
+            else if seconds  < &0.1_f64    { format!("{:5.3} s", seconds) }
+            else if seconds  < &1_f64      { format!("{:5.1} s", seconds) }
+            else                           { format!("{:5.0} s", seconds) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
     contextarea.configure_secondary_axes()
         .y_label_formatter(&|percent| {
-            if percent == &0_f64      { format!("{:5.0} %", percent) } else
-            if percent  < &10_f64     { format!("{:5.1} %", percent) } else 
-                                      { format!("{:5.0} %", percent) }
+                 if percent == &0_f64      { format!("{:5.0} %", percent) }
+            else if percent  < &10_f64     { format!("{:5.1} %", percent) }
+            else                           { format!("{:5.0} %", percent) }
         })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()

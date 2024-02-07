@@ -43,6 +43,8 @@ pub struct BlockDeviceInfo {
     pub queue_nomerges: f64,
     pub queue_physical_block_size: f64,
     pub queue_read_ahead_kb: f64,
+    pub queue_discard_max_hw_bytes: f64,
+    pub queue_discard_max_bytes: f64,
 }
 
 pub async fn read_blockdevice_sys_data() -> SysBlock {
@@ -62,7 +64,7 @@ pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut Has
                 )*
             };
         }
-        add_diskstats_data_to_statistics_u64!(stat_reads_completed_success, stat_reads_merged, stat_reads_sectors, stat_reads_time_spent_ms, stat_writes_completed_success, stat_writes_merged, stat_writes_sectors, stat_writes_time_spent_ms, stat_ios_in_progress, stat_ios_time_spent_ms, stat_ios_weighted_time_spent_ms, inflight_reads, inflight_writes, queue_max_hw_sectors_kb, queue_max_sectors_kb, queue_nr_requests, dev_block_major, dev_block_minor, removable, ro, queue_rotational, queue_dax, queue_hw_sector_size, queue_logical_block_size, queue_nomerges, queue_physical_block_size, queue_read_ahead_kb);
+        add_diskstats_data_to_statistics_u64!(stat_reads_completed_success, stat_reads_merged, stat_reads_sectors, stat_reads_time_spent_ms, stat_writes_completed_success, stat_writes_merged, stat_writes_sectors, stat_writes_time_spent_ms, stat_ios_in_progress, stat_ios_time_spent_ms, stat_ios_weighted_time_spent_ms, inflight_reads, inflight_writes, queue_max_hw_sectors_kb, queue_max_sectors_kb, queue_nr_requests, dev_block_major, dev_block_minor, removable, ro, queue_rotational, queue_dax, queue_hw_sector_size, queue_logical_block_size, queue_nomerges, queue_physical_block_size, queue_read_ahead_kb, queue_discard_max_bytes, queue_discard_max_hw_bytes);
         macro_rules! add_diskstats_data_to_statistics_option_u64 {
             ($($field_name:ident),*) => {
                 $(
@@ -152,6 +154,8 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         let queue_nomerges = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nomerges".to_string())).unwrap().last_value;
         let queue_physical_block_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_physical_block_size".to_string())).unwrap().last_value;
         let queue_read_ahead_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_read_ahead_kb".to_string())).unwrap().last_value;
+        let queue_discard_max_hw_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_discard_max_hw_bytes".to_string())).unwrap().last_value;
+        let queue_discard_max_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_discard_max_bytes".to_string())).unwrap().last_value;
 
 
         HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
@@ -188,7 +192,9 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
             queue_logical_block_size,
             queue_nomerges,
             queue_physical_block_size,
-            queue_read_ahead_kb
+            queue_read_ahead_kb,
+            queue_discard_max_hw_bytes,
+            queue_discard_max_bytes,
         });
     }
 
@@ -227,6 +233,8 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         queue_nomerges: 0_f64,
         queue_physical_block_size: 0_f64,
         queue_read_ahead_kb: 0_f64,
+        queue_discard_max_hw_bytes: 0_f64,
+        queue_discard_max_bytes: 0_f64,
     });
 }
 

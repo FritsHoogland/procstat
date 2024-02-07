@@ -190,11 +190,11 @@ pub fn pages_allocated_and_free(
         .x_desc("Time")
         .y_desc("Pages")
         .y_label_formatter(&|pages| {
-            if pages < &1_000_f64             { format!("{:6.0}",   pages)                       } else
-            if pages < &1_000_000_f64         { format!("{:7.1} k", pages/1_000_f64)             } else
-            if pages < &1_000_000_000_f64     { format!("{:7.1} m", pages/1_000_000_f64)         } else
-            if pages < &1_000_000_000_000_f64 { format!("{:7.1} t", pages/1_000_000_000_f64)     } else
-                                              { format!("{:7.1} p", pages/1_000_000_000_000_f64) } })
+                 if pages < &1_000_f64             { format!("{:6.0}",   pages)                       }
+            else if pages < &1_000_000_f64         { format!("{:7.1} k", pages/1_000_f64)             }
+            else if pages < &1_000_000_000_f64     { format!("{:7.1} m", pages/1_000_000_f64)         }
+            else if pages < &1_000_000_000_000_f64 { format!("{:7.1} t", pages/1_000_000_000_f64)     }
+            else                                   { format!("{:7.1} p", pages/1_000_000_000_000_f64) } })
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
