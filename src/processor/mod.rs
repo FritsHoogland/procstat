@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
+use anyhow::{Result, Context};
 use stat::{process_stat_data, add_cpu_total_to_history, read_stat_proc_data};
 use crate::processor::schedstat::{process_schedstat_data, read_schedstat_proc_data};
 use crate::processor::meminfo::{process_meminfo_data, read_meminfo_proc_data, add_memory_to_history, MemInfo};
@@ -81,16 +82,16 @@ pub struct HistoricalDataTransit {
     pub vmstat: Vec<VmStatInfo>,
 }
 
-pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) {
+pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     let timestamp = Local::now();
-    let proc_stat = read_stat_proc_data().await;
-    let proc_schedstat = read_schedstat_proc_data().await;
-    let proc_meminfo = read_meminfo_proc_data().await;
-    let sys_block_devices = read_blockdevice_sys_data().await;
-    let proc_netdev = read_netdev_proc_data().await;
-    let proc_loadavg = read_loadavg_proc_data().await;
-    let proc_pressure = read_pressure_proc_data().await;
-    let proc_vmstat = read_vmstat_proc_data().await;
+    let proc_stat = read_stat_proc_data().await.with_context(|| "Proc stat reader")?;
+    let proc_schedstat = read_schedstat_proc_data().await.with_context(|| "Proc schedstat reader")?;
+    let proc_meminfo = read_meminfo_proc_data().await.with_context(|| "Proc meminfo reader")?;
+    let sys_block_devices = read_blockdevice_sys_data().await.with_context(|| "Sys block reader")?;
+    let proc_netdev = read_netdev_proc_data().await.with_context(|| "Proc netdev reader")?;
+    let proc_loadavg = read_loadavg_proc_data().await.with_context(|| "Proc loadavg reader")?;
+    let proc_pressure = read_pressure_proc_data().await.with_context(|| "Proc pressure reader")?;
+    let proc_vmstat = read_vmstat_proc_data().await.with_context(|| "proc vmstat reader")?;
     let proc_data = ProcData {
         timestamp,
         stat: proc_stat,
@@ -102,31 +103,34 @@ pub async fn read_proc_data_and_process(statistics: &mut HashMap<(String, String
         pressure: proc_pressure,
         vmstat: proc_vmstat,
     };
-    process_data(proc_data, statistics).await;
+    process_data(proc_data, statistics).await.with_context(|| "Process data")?;
     if ARGS.webserver || ARGS.archiver {
-        add_to_history(statistics).await;
+        add_to_history(statistics).await.with_context(|| "Add to history")?;
     }
+    Ok(())
 }
 
-pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
-    process_stat_data(&proc_data, statistics).await;
-    process_schedstat_data(&proc_data, statistics).await;
-    process_meminfo_data(&proc_data, statistics).await;
-    process_blockdevice_data(&proc_data, statistics).await;
-    process_net_dev_data(&proc_data, statistics).await;
-    process_loadavg_data(&proc_data, statistics).await;
-    process_pressure_data(&proc_data, statistics).await;
-    process_vmstat_data(&proc_data, statistics).await;
+pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
+    process_stat_data(&proc_data, statistics).await.with_context(|| "Proc stat processor")?;
+    process_schedstat_data(&proc_data, statistics).await.with_context(|| "Proc schedstat processor")?;
+    process_meminfo_data(&proc_data, statistics).await.with_context(|| "Proc meminfo processor")?;
+    process_blockdevice_data(&proc_data, statistics).await.with_context(|| "Sys block processor")?;
+    process_net_dev_data(&proc_data, statistics).await.with_context(|| "Proc netdev processor")?;
+    process_loadavg_data(&proc_data, statistics).await.with_context(|| "Proc loadavg processor")?;
+    process_pressure_data(&proc_data, statistics).await.with_context(|| "Proc pressure processor")?;
+    process_vmstat_data(&proc_data, statistics).await.with_context(|| "Proc vmstat processor")?;
+    Ok(())
 }
 
-pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
-    add_cpu_total_to_history(statistics).await;
+pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result <()> {
+    add_cpu_total_to_history(statistics).await.with_context(|| "Proc stat history addition")?;
     add_memory_to_history(statistics).await;
     add_blockdevices_to_history(statistics).await;
     add_networkdevices_to_history(statistics).await;
     add_loadavg_to_history(statistics).await;
     add_pressure_to_history(statistics).await;
     add_vmstat_to_history(statistics).await;
+    Ok(())
 }
 
 pub async fn single_statistic_u64(

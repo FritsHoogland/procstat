@@ -1,16 +1,16 @@
 use std::collections::HashMap;
+use anyhow::Result;
 use crate::processor::{ProcData, single_statistic_u64, Statistic};
 use log::debug;
 use proc_sys_parser::schedstat::ProcSchedStat;
 
-pub async fn read_schedstat_proc_data() -> ProcSchedStat {
-    let proc_schedstat = proc_sys_parser::schedstat::read();
+pub async fn read_schedstat_proc_data() -> Result<ProcSchedStat> {
+    let proc_schedstat = proc_sys_parser::schedstat::read()?;
     debug!("{:?}", proc_schedstat);
-    proc_schedstat
+    Ok(proc_schedstat)
 }
 
-pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
 
     let mut scheduler_total_time_running = 0;
     let mut scheduler_total_time_waiting = 0;
@@ -26,6 +26,7 @@ pub async fn process_schedstat_data(proc_data: &ProcData, statistics: &mut HashM
     single_statistic_u64("schedstat", "all","time_running", proc_data.timestamp, scheduler_total_time_running, statistics).await;
     single_statistic_u64("schedstat", "all","time_waiting", proc_data.timestamp, scheduler_total_time_waiting, statistics).await;
     single_statistic_u64("schedstat", "all","timeslices", proc_data.timestamp, scheduler_total_timeslices, statistics).await;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -167,7 +168,7 @@ mod tests {
             vmstat: Default::default(),
         };
         let mut statistics: HashMap<(String, String, String), Statistic> = HashMap::new();
-        process_schedstat_data(&proc_data, &mut statistics).await;
+        process_schedstat_data(&proc_data, &mut statistics).await.unwrap();
         println!("{:#?}", statistics);
     }
 }

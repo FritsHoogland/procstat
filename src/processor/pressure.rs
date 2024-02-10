@@ -7,6 +7,7 @@ use proc_sys_parser::pressure::ProcPressure;
 use serde::{Serialize, Deserialize};
 use crate::processor::{ProcData, Statistic, single_statistic_u64, single_statistic_f64, single_statistic_option_u64, single_statistic_option_f64};
 use crate::HISTORY;
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct PressureInfo {
@@ -37,14 +38,14 @@ pub struct PressureInfo {
     pub memory_full_total: f64,
 }
 
-pub async fn read_pressure_proc_data() -> ProcPressure {
-    let proc_pressure = proc_sys_parser::pressure::read();
+pub async fn read_pressure_proc_data() -> Result<ProcPressure> {
+    let proc_pressure = proc_sys_parser::pressure::read()?;
     debug!("{:?}", proc_pressure);
-    proc_pressure
+    Ok(proc_pressure)
 }
 
-pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
-    if proc_data.pressure.psi.as_ref().is_none() { return };
+pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
+    if proc_data.pressure.psi.as_ref().is_none() { return Ok(()) };
     single_statistic_f64("pressure", "","cpu_some_avg10", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg10, statistics).await;
     single_statistic_f64("pressure", "","cpu_some_avg60", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg60, statistics).await;
     single_statistic_f64("pressure", "","cpu_some_avg300", proc_data.timestamp, proc_data.pressure.psi.as_ref().unwrap().cpu_some_avg300, statistics).await;
@@ -69,6 +70,8 @@ pub async fn process_pressure_data(proc_data: &ProcData, statistics: &mut HashMa
     single_statistic_f64("pressure", "","memory_full_avg60", proc_data.timestamp,proc_data.pressure.psi.as_ref().unwrap().memory_full_avg60, statistics).await;
     single_statistic_f64("pressure", "","memory_full_avg300", proc_data.timestamp,proc_data.pressure.psi.as_ref().unwrap().memory_full_avg300, statistics).await;
     single_statistic_u64("pressure", "","memory_full_total", proc_data.timestamp,proc_data.pressure.psi.as_ref().unwrap().memory_full_total, statistics).await;
+
+    Ok(())
 }
 
 pub async fn add_pressure_to_history(statistics: &HashMap<(String, String, String), Statistic>)

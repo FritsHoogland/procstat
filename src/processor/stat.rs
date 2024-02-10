@@ -1,4 +1,5 @@
 use std::collections::{HashMap, BTreeSet};
+use anyhow::{Result, Context};
 use chrono::{DateTime, Local};
 use crate::HISTORY;
 use crate::processor::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
@@ -24,23 +25,28 @@ pub struct CpuStat {
     pub scheduler_waiting: f64,
 }
 
-pub async fn read_stat_proc_data() -> ProcStat {
-    let proc_stat = proc_sys_parser::stat::read();
+pub async fn read_stat_proc_data() -> Result<ProcStat> {
+    let proc_stat = proc_sys_parser::stat::read()?;
     debug!("{:?}", proc_stat);
-    proc_stat
+    Ok(proc_stat)
 }
 
-pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
-    process_cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await;
+pub async fn process_stat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
+    process_cpu_statistics(&proc_data.stat.cpu_total, proc_data.timestamp, statistics).await.with_context(|| "Cpu total statistics")?;
     for cpu_stat in &proc_data.stat.cpu_individual {
-        process_cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await;
+        process_cpu_statistics(cpu_stat, proc_data.timestamp, statistics).await.with_context(|| "Cpu individual statistics")?;
     }
     add_list_of_u64_data_to_statistics!(stat, "", proc_data.timestamp, proc_data, stat, statistics, context_switches, processes, processes_running, processes_blocked);
     single_statistic_u64("stat", "", "interrupts_total", proc_data.timestamp, proc_data.stat.interrupts.first().cloned().unwrap(), statistics).await;
     single_statistic_u64("stat", "", "softirq_total", proc_data.timestamp, proc_data.stat.softirq.first().cloned().unwrap(), statistics).await;
+    Ok(())
 }
 
-pub async fn process_cpu_statistics(cpu_data: &proc_sys_parser::stat::CpuStat, timestamp: DateTime<Local>, statistics: &mut HashMap<(String, String, String), Statistic>) {
+pub async fn process_cpu_statistics(
+    cpu_data: &proc_sys_parser::stat::CpuStat, 
+    timestamp: DateTime<Local>, 
+    statistics: &mut HashMap<(String, String, String), Statistic>
+) -> Result<()> {
     let cpu_name = match cpu_data.name.as_str()
     {
         "cpu" => "all",
@@ -62,6 +68,7 @@ pub async fn process_cpu_statistics(cpu_data: &proc_sys_parser::stat::CpuStat, t
         };
     }
     add_cpu_data_field_to_statistics_option_u64!(iowait, irq, softirq, steal, guest, guest_nice);
+    Ok(())
 }
 
 // sar cpu statistics: https://github.com/sysstat/sysstat/blob/dbc0b6a59fea1437025208aa12a612181c804fb4/rd_stats.c#L76
@@ -330,9 +337,8 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
     }
 }
 
-pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, String), Statistic>)
-{
-    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
+pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()> {
+    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return Ok(()) };
     let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
     let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value/1000_f64;
     let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().per_second_value/1000_f64;
@@ -362,5 +368,6 @@ pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, Stri
         scheduler_running,
         scheduler_waiting,
     });
+    Ok(())
 }
 

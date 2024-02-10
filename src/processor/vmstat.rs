@@ -2,6 +2,7 @@ use chrono::{DateTime, Local};
 use proc_sys_parser::vmstat::ProcVmStat;
 use std::collections::{HashMap, BTreeSet};
 use serde::{Serialize, Deserialize};
+use anyhow::Result;
 use crate::processor::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
 use crate::{add_list_of_u64_data_to_statistics, add_list_of_option_u64_data_to_statistics};
 use log::debug;
@@ -190,15 +191,16 @@ pub struct VmStatInfo {
     pub pgmajfault_delta: f64,
 }
 
-pub async fn read_vmstat_proc_data() -> ProcVmStat {
-    let proc_vmstat = proc_sys_parser::vmstat::read();
+pub async fn read_vmstat_proc_data() -> Result<ProcVmStat> {
+    let proc_vmstat = proc_sys_parser::vmstat::read()?;
     debug!("{:?}", proc_vmstat);
-    proc_vmstat
+    Ok(proc_vmstat)
 }
 
-pub async fn process_vmstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
+pub async fn process_vmstat_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     add_list_of_u64_data_to_statistics!(vmstat, "", proc_data.timestamp, proc_data, vmstat, statistics, nr_free_pages, nr_zone_inactive_anon, nr_zone_active_anon, nr_zone_inactive_file, nr_zone_active_file, nr_zone_unevictable, nr_zone_write_pending, nr_mlock, nr_bounce, nr_zspages, nr_free_cma, numa_hit, numa_miss, numa_foreign, numa_interleave, numa_local, numa_other, nr_inactive_anon, nr_active_anon, nr_active_file, nr_inactive_file, nr_unevictable, nr_slab_reclaimable, nr_slab_unreclaimable, nr_isolated_anon, nr_isolated_file, workingset_nodereclaim, nr_anon_pages, nr_mapped, nr_file_pages, nr_dirty, nr_writeback, nr_writeback_temp, nr_shmem, nr_shmem_hugepages, nr_shmem_pmdmapped, nr_anon_transparent_hugepages, nr_vmscan_write, nr_vmscan_immediate_reclaim, nr_dirtied, nr_written, nr_kernel_stack, nr_page_table_pages, nr_dirty_threshold, nr_dirty_background_threshold, pgpgin, pgpgout, pswpin, pswpout, pgalloc_dma, pgalloc_dma32, pgalloc_normal, pgalloc_movable, allocstall_dma, allocstall_dma32, allocstall_normal, allocstall_movable, pgskip_dma, pgskip_dma32, pgskip_normal, pgskip_movable, pgfree, pgactivate, pgdeactivate, pglazyfree, pglazyfreed, pgrefill, pgfault, pgmajfault, pgsteal_kswapd, pgsteal_direct, pgscan_kswapd, pgscan_direct, pgscan_direct_throttle, zone_reclaim_failed, pginodesteal, kswapd_inodesteal, kswapd_low_wmark_hit_quickly, kswapd_high_wmark_hit_quickly, pageoutrun, pgrotated, drop_pagecache, drop_slab, oom_kill, numa_pte_updates, numa_huge_pte_updates, numa_hint_faults, numa_hint_faults_local, numa_pages_migrated, pgmigrate_success, pgmigrate_fail, compact_migrate_scanned, compact_free_scanned, compact_isolated, compact_stall, compact_fail, compact_success, compact_daemon_wake, compact_daemon_migrate_scanned, compact_daemon_free_scanned, htlb_buddy_alloc_success, htlb_buddy_alloc_fail, unevictable_pgs_culled, unevictable_pgs_scanned, unevictable_pgs_rescued, unevictable_pgs_mlocked, unevictable_pgs_munlocked, unevictable_pgs_cleared, unevictable_pgs_stranded, thp_fault_alloc, thp_fault_fallback, thp_collapse_alloc, thp_collapse_alloc_failed, thp_file_alloc, thp_file_mapped, thp_split_page, thp_split_page_failed, thp_deferred_split_page, thp_split_pmd, thp_zero_page_alloc, thp_zero_page_alloc_failed, thp_swpout, thp_swpout_fallback, balloon_inflate, balloon_deflate, balloon_migrate, swap_ra, swap_ra_hit, nr_unstable);
     add_list_of_option_u64_data_to_statistics!(vmstat, "", proc_data.timestamp, proc_data, vmstat, statistics, workingset_nodes, workingset_restore_anon, workingset_refault_file, workingset_activate_anon, workingset_activate_file, workingset_restore_anon, workingset_restore_file, nr_file_hugepages, nr_file_pmdmapped, nr_throttled_written, nr_kernel_misc_reclaimable, nr_foll_pin_acquired, nr_foll_pin_released, nr_shadow_call_stack, nr_sec_page_table_pages, nr_swapcached, pgpromote_success, pgpromote_candidate, pgalloc_device, pgskip_device, pgreuse, pgsteal_khugepaged, pgdemote_kswapd, pgdemote_direct, pgdemote_khugepaged, pgscan_khugepaged, pgscan_anon, pgscan_file, pgsteal_anon, pgsteal_file, slabs_scanned, thp_migration_success, thp_migration_fail, thp_migration_split, cma_alloc_success, cma_alloc_fail, thp_fault_fallback_charge, thp_file_fallback, thp_file_fallback_charge, thp_scan_exceed_none_pte, thp_scan_exceed_swap_pte, thp_scan_exceed_share_pte, ksm_swpin_copy, cow_ksm, zswpin, zswpout);
+    Ok(())
 }
 
 pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
@@ -220,8 +222,12 @@ pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String)
             )*
         };
     }
+
+    // the reason for the pgfault and pgmajfault statistics to have a separate delta statistic is
+    // that the per second value is used for sar-B.
     let pgfault_delta = statistics.get(&("vmstat".to_string(), "".to_string(), "pgfault".to_string())).unwrap_or(&Statistic::default()).delta_value;
     let pgmajfault_delta = statistics.get(&("vmstat".to_string(), "".to_string(), "pgmajfault".to_string())).unwrap_or(&Statistic::default()).delta_value;
+
     generate_assignments_for_history_addition_delta_value!(oom_kill, pgfree, pgalloc_dma, pgalloc_dma32, pgalloc_normal, pgalloc_device, pgalloc_movable, pgscan_kswapd, pgscan_direct, pgscan_khugepaged, pgsteal_khugepaged, pgsteal_kswapd, pgsteal_direct);
     HISTORY.vmstat.write().unwrap().push_back( VmStatInfo {
         timestamp,

@@ -379,6 +379,26 @@ pub fn pages_allocated_and_free(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "pgscan_khugepaged", min_alloc, max_alloc, latest.map_or(0_f64, |latest| latest.pgscan_khugepaged)))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], LIGHTGREEN_300.filled()));
+
+    // this is a plot to only show the amount of oom kills
+    let min_oom_kill = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.oom_kill > 0_f64)
+        .map(|vmstat| vmstat.oom_kill)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_oom_kill = historical_data_read
+        .iter()
+        .filter(|vmstat| vmstat.oom_kill > 0_f64)
+        .map(|vmstat| vmstat.oom_kill)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea.draw_series(LineSeries::new(historical_data_read
+            .iter()
+            .take(1)
+            .map(|vmstat| (vmstat.timestamp, vmstat.oom_kill)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "oom_kill", min_oom_kill, max_oom_kill, latest.map_or(0_f64, |l| l.oom_kill)));
     //
     // draw the legend
     contextarea.configure_series_labels()

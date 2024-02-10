@@ -2,7 +2,7 @@ use crate::ARGS;
 use std::time::Duration;
 use tokio::time::{self, MissedTickBehavior};
 use std::collections::HashMap;
-
+use anyhow::{Result, Context};
 use crate::processor::Statistic;
 use crate::processor::read_proc_data_and_process;
 use crate::OutputOptions;
@@ -15,7 +15,7 @@ use crate::processor::net_dev::print_net_dev;
 use crate::processor::pressure::print_psi;
 use crate::processor::loadavg::print_loadavg;
 
-pub async fn app() {
+pub async fn app() -> Result<()> {
     let mut interval = time::interval(Duration::from_secs(ARGS.interval));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
@@ -24,7 +24,7 @@ pub async fn app() {
     loop {
         interval.tick().await;
 
-        read_proc_data_and_process(&mut current_statistics).await;
+        read_proc_data_and_process(&mut current_statistics).await.with_context(|| "Processor: read proc data and process")?;
 
         if ! ARGS.deamon {
             let print_header = output_counter % ARGS.header_print == 0;
@@ -64,5 +64,6 @@ pub async fn app() {
             };
         }
     }
+    Ok(())
 }
 

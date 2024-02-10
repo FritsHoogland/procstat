@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local};
 use proc_sys_parser::meminfo::ProcMemInfo;
+use anyhow::Result;
 use std::collections::HashMap;
 use crate::processor::{ProcData, single_statistic_u64, Statistic};
 use crate::add_list_of_u64_data_to_statistics;
@@ -31,14 +32,15 @@ pub struct MemInfo {
     pub swapfree: f64,
 }
 
-pub async fn read_meminfo_proc_data() -> ProcMemInfo {
-    let proc_meminfo = proc_sys_parser::meminfo::read();
+pub async fn read_meminfo_proc_data() -> Result<ProcMemInfo> {
+    let proc_meminfo = proc_sys_parser::meminfo::read()?;
     debug!("{:?}", proc_meminfo);
-    proc_meminfo
+    Ok(proc_meminfo)
 }
 
-pub async fn process_meminfo_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) {
+pub async fn process_meminfo_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     add_list_of_u64_data_to_statistics!(meminfo, "", proc_data.timestamp, proc_data, meminfo, statistics, memtotal, memfree, memavailable, buffers, cached, swapcached, active, inactive, active_anon, inactive_anon, active_file, inactive_file, unevictable, mlocked, swaptotal, swapfree, zswap, zswapped, dirty, writeback, anonpages, mapped, shmem, kreclaimable, slab, sreclaimable, sunreclaim, kernelstack, shadowcallstack, pagetables, secpagetables, nfs_unstable, bounce, writebacktmp, commitlimit, committed_as, vmalloctotal, vmallocused, vmallocchunk, percpu, hardwarecorrupted, anonhugepages, shmemhugepages, shmempmdmapped, filehugepages, filepmdmapped, cmatotal, cmafree, hugepages_total, hugepages_free, hugepages_rsvd, hugepages_surp, hugepagesize, hugetlb);
+    Ok(())
 }
 
 pub async fn print_meminfo(

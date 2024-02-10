@@ -7,6 +7,7 @@ use crate::processor::{ProcData, Statistic, single_statistic_u64, single_statist
 use crate::{add_list_of_f64_data_to_statistics, add_list_of_u64_data_to_statistics};
 use serde::{Serialize, Deserialize};
 use crate::HISTORY;
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct LoadavgInfo {
@@ -19,16 +20,17 @@ pub struct LoadavgInfo {
     pub last_pid: f64,
 }
 
-pub async fn read_loadavg_proc_data() -> ProcLoadavg {
-    let proc_loadavg = proc_sys_parser::loadavg::read();
+pub async fn read_loadavg_proc_data() -> Result<ProcLoadavg> {
+    let proc_loadavg = proc_sys_parser::loadavg::read()?;
     debug!("{:?}", proc_loadavg);
-    proc_loadavg
+    Ok(proc_loadavg)
 }
 
-pub async fn process_loadavg_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_loadavg_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     add_list_of_f64_data_to_statistics!(loadavg, "", proc_data.timestamp, proc_data, loadavg, statistics, load_1, load_5, load_15);
     add_list_of_u64_data_to_statistics!(loadavg, "", proc_data.timestamp, proc_data, loadavg, statistics, current_runnable, total, last_pid);
+
+    Ok(())
 }
 
 pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String), Statistic>)

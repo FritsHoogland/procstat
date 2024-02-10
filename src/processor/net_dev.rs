@@ -4,6 +4,7 @@ use log::debug;
 use chrono::{DateTime, Local};
 use proc_sys_parser::net_dev::ProcNetDev;
 use serde::{Serialize, Deserialize};
+use anyhow::Result;
 //
 use crate::processor::{ProcData, single_statistic_u64, Statistic};
 use crate::HISTORY;
@@ -30,14 +31,13 @@ pub struct NetworkDeviceInfo {
     pub transmit_compressed: f64,
 }
 
-pub async fn read_netdev_proc_data() -> ProcNetDev {
-    let proc_netdev = proc_sys_parser::net_dev::read();
+pub async fn read_netdev_proc_data() -> Result<ProcNetDev> {
+    let proc_netdev = proc_sys_parser::net_dev::read()?;
     debug!("{:?}", proc_netdev);
-    proc_netdev
+    Ok(proc_netdev)
 }
 
-pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     for interface in &proc_data.net_dev.interface
     {
         macro_rules! add_net_dev_data_to_statistics {
@@ -49,6 +49,7 @@ pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap
         }
         add_net_dev_data_to_statistics!(receive_bytes, receive_packets, receive_errors, receive_drop, receive_fifo, receive_frame, receive_compressed, receive_multicast, transmit_bytes, transmit_packets, transmit_errors, transmit_drop, transmit_fifo, transmit_collisions, transmit_carrier, transmit_compressed);
     }
+    Ok(())
 }
 
 pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String, String), Statistic>)

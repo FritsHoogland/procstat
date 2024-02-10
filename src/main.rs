@@ -3,6 +3,7 @@ use std::process;
 use log::info;
 use env_logger;
 use chrono::Local;
+use anyhow::Result;
 
 // this is a feature-gated option to perform memory usage analysis.
 #[cfg(feature = "dhat-heap")]
@@ -16,7 +17,7 @@ use procstat::webserver::webserver;
 
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     #[cfg(feature = "dhat-heap")]
     let mut _profiler = dhat::Profiler::new_heap(); 
 
@@ -51,7 +52,9 @@ async fn main() {
     }
 
     // run the fetching and CLI output.
-    app().await;
+    app().await?;
 
     info!("End procstat, total time: {:?}", timer.elapsed());
+
+    Ok(())
 }

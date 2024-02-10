@@ -3,6 +3,7 @@ use log::debug;
 use chrono::{DateTime, Local};
 use proc_sys_parser::block::SysBlock;
 use serde::{Serialize, Deserialize};
+use anyhow::Result;
 
 use crate::processor::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
 use crate::HISTORY;
@@ -47,14 +48,13 @@ pub struct BlockDeviceInfo {
     pub queue_discard_max_bytes: f64,
 }
 
-pub async fn read_blockdevice_sys_data() -> SysBlock {
-    let sys_block = proc_sys_parser::block::read();
+pub async fn read_blockdevice_sys_data() -> Result<SysBlock> {
+    let sys_block = proc_sys_parser::block::read()?;
     debug!("{:?}", sys_block);
-    sys_block
+    Ok(sys_block)
 }
 
-pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>)
-{
+pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut HashMap<(String, String, String), Statistic>) -> Result<()> {
     for disk in &proc_data.blockdevices.block_devices {
 
         macro_rules! add_diskstats_data_to_statistics_u64 {
@@ -74,10 +74,11 @@ pub async fn process_blockdevice_data(proc_data: &ProcData, statistics: &mut Has
         }
         add_diskstats_data_to_statistics_option_u64!(stat_discards_completed_success, stat_discards_merged, stat_discards_sectors, stat_discards_time_spent_ms, stat_flush_requests_completed_success, stat_flush_requests_time_spent_ms);
     }
+
+    Ok(())
 }
 
-pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, String), Statistic>)
-{
+pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
     let disk_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "blockdevice")
         .map(|(_, disk_name, _)| disk_name)
@@ -87,7 +88,8 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
 
     if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return; };
 
-    let mut totals = [0_f64; 22];
+    // this is an array where the statistics for the 'TOTAL' device are stored by simply adding the statistics to the elements in the array.
+    let mut totals = [0_f64; 20];
 
     let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
 
@@ -137,12 +139,10 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         totals[17] += inflight_reads;
         let inflight_writes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "inflight_writes".to_string())).unwrap().last_value;
         totals[18] += inflight_writes;
-        let queue_max_sectors_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_sectors_kb".to_string())).unwrap().last_value;
-        totals[19] += queue_max_sectors_kb;
-        let queue_max_hw_sectors_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_hw_sectors_kb".to_string())).unwrap().last_value;
-        totals[20] += queue_max_hw_sectors_kb;
         let queue_nr_requests = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nr_requests".to_string())).unwrap().last_value;
-        totals[21] += queue_nr_requests;
+        totals[19] += queue_nr_requests;
+        let queue_max_sectors_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_sectors_kb".to_string())).unwrap().last_value;
+        let queue_max_hw_sectors_kb = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_hw_sectors_kb".to_string())).unwrap().last_value;
         let dev_block_major = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "dev_block_major".to_string())).unwrap().last_value;
         let dev_block_minor = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "dev_block_minor".to_string())).unwrap().last_value;
         let removable = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "removable".to_string())).unwrap().last_value;
@@ -201,9 +201,6 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
     HISTORY.blockdevices.write().unwrap().push_back(BlockDeviceInfo {
         timestamp,
         device_name: "TOTAL".to_string(),
-        device_major_minor: "".to_string(),
-        removable: 0_f64,
-        ro: 0_f64,
         reads_completed_success: totals[0],
         reads_merged: totals[1],
         reads_bytes: totals[2],
@@ -223,18 +220,8 @@ pub async fn add_blockdevices_to_history(statistics: &HashMap<(String, String, S
         flush_requests_time_spent_ms: totals[16],
         inflight_reads: totals[17],
         inflight_writes: totals[18],
-        queue_max_sectors_kb: totals[19],
-        queue_max_hw_sectors_kb: totals[20],
-        queue_nr_requests: totals[21],
-        queue_rotational: 0_f64,
-        queue_dax: 0_f64,
-        queue_hw_sector_size: 0_f64,
-        queue_logical_block_size: 0_f64,
-        queue_nomerges: 0_f64,
-        queue_physical_block_size: 0_f64,
-        queue_read_ahead_kb: 0_f64,
-        queue_discard_max_hw_bytes: 0_f64,
-        queue_discard_max_bytes: 0_f64,
+        queue_nr_requests: totals[19],
+        ..Default::default()
     });
 }
 
