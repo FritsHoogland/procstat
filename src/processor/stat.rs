@@ -2,7 +2,7 @@ use std::collections::{HashMap, BTreeSet};
 use anyhow::{Result, Context};
 use chrono::{DateTime, Local};
 use crate::HISTORY;
-use crate::processor::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic};
+use crate::processor::{ProcData, single_statistic_u64, single_statistic_option_u64, Statistic, ProcessorError};
 use crate::add_list_of_u64_data_to_statistics;
 use serde::{Serialize, Deserialize};
 use log::debug;
@@ -72,12 +72,9 @@ pub async fn process_cpu_statistics(
 }
 
 // sar cpu statistics: https://github.com/sysstat/sysstat/blob/dbc0b6a59fea1437025208aa12a612181c804fb4/rd_stats.c#L76
-pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool)
-{
-    if print_header
-    {
-        match output
-        {
+pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) -> Result<()> {
+    if print_header {
+        match output {
             "sar-u" => {
                 println!("{:10} {:7}    {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
                          "Timestamp",
@@ -135,25 +132,32 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             &_ => todo! {},
         }
     }
-    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return };
-    let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
-    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value;
-    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().per_second_value;
-    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string())).unwrap().per_second_value;
-    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string())).unwrap().per_second_value;
-    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string())).unwrap().per_second_value;
-    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string())).unwrap().per_second_value;
-    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string())).unwrap().per_second_value;
-    let guest_user = statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string())).unwrap().per_second_value;
-    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().per_second_value;
-    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().per_second_value;
+    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.updated_value { return Ok(()) };
+    let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.last_timestamp;
+    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.per_second_value;
+    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "nice".to_string() })?.per_second_value;
+    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "system".to_string() })?.per_second_value;
+    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "iowait".to_string() })?.per_second_value;
+    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "steal".to_string() })?.per_second_value;
+    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "irq".to_string() })?.per_second_value;
+    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "softirq".to_string() })?.per_second_value;
+    let guest_user = statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "guest".to_string() })?.per_second_value;
+    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "guest_nice".to_string() })?.per_second_value;
+    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "idle".to_string() })?.per_second_value;
     let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1_000_000_f64;
-    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1_000_000_f64;
-    let processes = statistics.get(&("stat".to_string(), "".to_string(), "processes".to_string())).unwrap().per_second_value;
-    let context_switches = statistics.get(&("stat".to_string(), "".to_string(), "context_switches".to_string())).unwrap().per_second_value;
-    match output
-    {
+    match output {
         "sar-u" => {
             println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
@@ -183,6 +187,10 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "cpu-all" => {
+            let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "schedstat".to_string(), key2: "all".to_string(), key3: "time_running".to_string() })?.per_second_value/1_000_000_f64;
+            let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "schedstat".to_string(), key2: "all".to_string(), key3: "time_waiting".to_string() })?.per_second_value/1_000_000_f64;
             println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "all",
@@ -201,6 +209,10 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
             );
         },
         "sar-w" => {
+            let processes = statistics.get(&("stat".to_string(), "".to_string(), "processes".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "".to_string(), key3: "processes".to_string() })?.per_second_value;
+            let context_switches = statistics.get(&("stat".to_string(), "".to_string(), "context_switches".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "".to_string(), key3: "context_switches".to_string() })?.per_second_value;
             println!("{:10} {:7}    {:10.2} {:10.2}",
                      timestamp.format("%H:%M:%S"),
                      "",
@@ -210,6 +222,7 @@ pub async fn print_all_cpu(statistics: &HashMap<(String, String, String), Statis
         },
         &_ => todo!{},
     }
+    Ok(())
 }
 pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statistic>, output: &str)
 {
@@ -338,21 +351,35 @@ pub async fn print_per_cpu(statistics: &HashMap<(String, String, String), Statis
 }
 
 pub async fn add_cpu_total_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()> {
-    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().updated_value { return Ok(()) };
-    let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().last_timestamp;
-    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string())).unwrap().per_second_value/1000_f64;
-    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string())).unwrap().per_second_value/1000_f64;
-    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string())).unwrap().per_second_value/1000_f64;
-    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string())).unwrap().per_second_value/1000_f64;
-    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string())).unwrap().per_second_value/1000_f64;
-    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string())).unwrap().per_second_value/1000_f64;
-    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string())).unwrap().per_second_value/1000_f64;
-    let guest= statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string())).unwrap().per_second_value/1000_f64;
-    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string())).unwrap().per_second_value/1000_f64;
-    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string())).unwrap().per_second_value/1000_f64;
+    if !statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.updated_value { return Ok(()) };
+    let timestamp = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.last_timestamp;
+    let user = statistics.get(&("stat".to_string(), "all".to_string(), "user".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "user".to_string() })?.per_second_value/1000_f64;
+    let nice = statistics.get(&("stat".to_string(), "all".to_string(), "nice".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "nice".to_string() })?.per_second_value/1000_f64;
+    let system = statistics.get(&("stat".to_string(), "all".to_string(), "system".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "system".to_string() })?.per_second_value/1000_f64;
+    let iowait = statistics.get(&("stat".to_string(), "all".to_string(), "iowait".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "iowait".to_string() })?.per_second_value/1000_f64;
+    let steal = statistics.get(&("stat".to_string(), "all".to_string(), "steal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "steal".to_string() })?.per_second_value/1000_f64;
+    let irq = statistics.get(&("stat".to_string(), "all".to_string(), "irq".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "irq".to_string() })?.per_second_value/1000_f64;
+    let softirq = statistics.get(&("stat".to_string(), "all".to_string(), "softirq".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "softirq".to_string() })?.per_second_value/1000_f64;
+    let guest= statistics.get(&("stat".to_string(), "all".to_string(), "guest".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "guest".to_string() })?.per_second_value/1000_f64;
+    let guest_nice = statistics.get(&("stat".to_string(), "all".to_string(), "guest_nice".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "guest_nice".to_string() })?.per_second_value/1000_f64;
+    let idle = statistics.get(&("stat".to_string(), "all".to_string(), "idle".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "stat".to_string(), key2: "all".to_string(), key3: "idle".to_string() })?.per_second_value/1000_f64;
     //let total = user+nice+system+iowait+steal+irq+softirq+guest_user+guest_nice+idle;
-    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string())).unwrap().per_second_value/1_000_000_f64/1000_f64;
-    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string())).unwrap().per_second_value/1_000_000_f64/1000_f64;
+    let scheduler_running = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_running".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "schedstat".to_string(), key2: "all".to_string(), key3: "time_running".to_string() })?.per_second_value/1_000_000_f64/1000_f64;
+    let scheduler_waiting = statistics.get(&("schedstat".to_string(), "all".to_string(), "time_waiting".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "schedstat".to_string(), key2: "all".to_string(), key3: "time_waiting".to_string() })?.per_second_value/1_000_000_f64/1000_f64;
     HISTORY.cpu.write().unwrap().push_back( CpuStat {
         timestamp,
         user,

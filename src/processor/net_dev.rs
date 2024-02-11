@@ -9,6 +9,8 @@ use anyhow::Result;
 use crate::processor::{ProcData, single_statistic_u64, Statistic};
 use crate::HISTORY;
 
+use super::ProcessorError;
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct NetworkDeviceInfo {
     pub timestamp: DateTime<Local>,
@@ -52,7 +54,7 @@ pub async fn process_net_dev_data(proc_data: &ProcData, statistics: &mut HashMap
     Ok(())
 }
 
-pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String, String), Statistic>)
+pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()>
 {
     let nic_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "net_dev")
@@ -61,47 +63,65 @@ pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String,
         .into_iter()
         .collect();
 
-    if !statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string())).unwrap().updated_value { return; };
+    if !statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: nic_list[0].to_string(), key3: "receive_bytes".to_string() })?.updated_value { return Ok(()) };
 
     let mut totals = [0_f64; 16];
 
-    let timestamp = statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string())).unwrap().last_timestamp;
+    let timestamp = statistics.get(&("net_dev".to_string(), nic_list[0].to_string(), "receive_bytes".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: nic_list[0].to_string(), key3: "receive_bytes".to_string() })?.last_timestamp;
 
     for network_interface in nic_list.iter().filter(|interface_name| !interface_name.starts_with("lo"))
     {
         // receive
-        let receive_bytes = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_bytes".to_string())).unwrap().per_second_value;
+        let receive_bytes = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_bytes".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_bytes".to_string() })?.per_second_value;
         totals[0] += receive_bytes;
-        let receive_packets = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_packets".to_string())).unwrap().per_second_value;
+        let receive_packets = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_packets".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_packets".to_string() })?.per_second_value;
         totals[1] += receive_packets;
-        let receive_errors = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_errors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+        let receive_errors = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_errors".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_errors".to_string() })?.per_second_value;
         totals[2] += receive_errors;
-        let receive_drop = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_drop".to_string())).unwrap().per_second_value;
+        let receive_drop = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_drop".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_drop".to_string() })?.per_second_value;
         totals[3] += receive_drop;
-        let receive_fifo = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_fifo".to_string())).unwrap().per_second_value;
+        let receive_fifo = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_fifo".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_fifo".to_string() })?.per_second_value;
         totals[4] += receive_fifo;
-        let receive_frame = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_frame".to_string())).unwrap().per_second_value;
+        let receive_frame = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_frame".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_frame".to_string() })?.per_second_value;
         totals[5] += receive_frame;
-        let receive_compressed = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_compressed".to_string())).unwrap().per_second_value;
+        let receive_compressed = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_compressed".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_compressed".to_string() })?.per_second_value;
         totals[6] += receive_compressed;
-        let receive_multicast = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_multicast".to_string())).unwrap().per_second_value;
+        let receive_multicast = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "receive_multicast".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "receive_multicast".to_string() })?.per_second_value;
         totals[7] += receive_multicast;
         // transmit
-        let transmit_bytes = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_bytes".to_string())).unwrap().per_second_value;
+        let transmit_bytes = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_bytes".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_bytes".to_string() })?.per_second_value;
         totals[8] += transmit_bytes;
-        let transmit_packets = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_packets".to_string())).unwrap().per_second_value;
+        let transmit_packets = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_packets".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_packets".to_string() })?.per_second_value;
         totals[9] += transmit_packets;
-        let transmit_errors = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_errors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+        let transmit_errors = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_errors".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_errors".to_string() })?.per_second_value;
         totals[10] += transmit_errors;
-        let transmit_drop = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_drop".to_string())).unwrap().per_second_value;
+        let transmit_drop = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_drop".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_drop".to_string() })?.per_second_value;
         totals[11] += transmit_drop;
-        let transmit_fifo = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_fifo".to_string())).unwrap().per_second_value;
+        let transmit_fifo = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_fifo".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_fifo".to_string() })?.per_second_value;
         totals[12] += transmit_fifo;
-        let transmit_collisions = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_collisions".to_string())).unwrap().per_second_value;
+        let transmit_collisions = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_collisions".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_collisions".to_string() })?.per_second_value;
         totals[13] += transmit_collisions;
-        let transmit_carrier = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_carrier".to_string())).unwrap().per_second_value;
+        let transmit_carrier = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_carrier".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_carrier".to_string() })?.per_second_value;
         totals[14] += transmit_carrier;
-        let transmit_compressed = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_compressed".to_string())).unwrap().per_second_value;
+        let transmit_compressed = statistics.get(&("net_dev".to_string(), network_interface.to_string(), "transmit_compressed".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: network_interface.to_string(), key3: "transmit_compressed".to_string() })?.per_second_value;
         totals[15] += transmit_compressed;
 
         HISTORY.networkdevices.write().unwrap().push_back(NetworkDeviceInfo {
@@ -145,6 +165,8 @@ pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String,
         transmit_carrier: totals[14],
         transmit_compressed: totals[15],
     });
+
+    Ok(())
 }
 
 pub async fn print_net_dev(

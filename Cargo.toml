@@ -29,6 +29,7 @@ serde = { version = "1.0.195", features = ["derive"] }
 serde_derive = "1.0.195"
 serde_json = "1.0.111"
 sysctl = "0.5.5"
+thiserror = "1.0.56"
 tokio = { version = "1.35.0", features = ["full"] }
 
 [package.metadata.generate-rpm]

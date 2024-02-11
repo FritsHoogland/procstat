@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
     // spawn the ctrlc thead
     ctrlc::set_handler(move || { 
-        if ARGS.archiver { archive(Local::now()) }
+        if ARGS.archiver { archive(Local::now()); }
         info!("End procstat, total time: {:?}", timer.elapsed());
         process::exit(0);
     }).unwrap();

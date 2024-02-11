@@ -1361,6 +1361,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sysctl",
+ "thiserror",
  "tokio",
 ]
 

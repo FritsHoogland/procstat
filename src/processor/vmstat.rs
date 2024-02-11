@@ -3,7 +3,7 @@ use proc_sys_parser::vmstat::ProcVmStat;
 use std::collections::{HashMap, BTreeSet};
 use serde::{Serialize, Deserialize};
 use anyhow::Result;
-use crate::processor::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64};
+use crate::processor::{ProcData, Statistic, single_statistic_u64, single_statistic_option_u64, ProcessorError};
 use crate::{add_list_of_u64_data_to_statistics, add_list_of_option_u64_data_to_statistics};
 use log::debug;
 use crate::HISTORY;
@@ -203,9 +203,11 @@ pub async fn process_vmstat_data(proc_data: &ProcData, statistics: &mut HashMap<
     Ok(())
 }
 
-pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String), Statistic>) {
-    if !statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string())).unwrap().updated_value { return };
-    let timestamp = statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string())).unwrap().last_timestamp;
+pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()> {
+    if !statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "vmstat".to_string(), key2: "".to_string(), key3: "nr_free_pages".to_string() })?.updated_value { return Ok(()) };
+    let timestamp = statistics.get(&("vmstat".to_string(), "".to_string(), "nr_free_pages".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "vmstat".to_string(), key2: "".to_string(), key3: "nr_free_pages".to_string() })?.last_timestamp;
 
     macro_rules! generate_assignments_for_history_addition_per_second_value {
         ($($field_name:ident),*) => {
@@ -411,6 +413,7 @@ pub async fn add_vmstat_to_history(statistics: &HashMap<(String, String, String)
         pgmajfault_delta,
     });
     debug!("{:?}", HISTORY.vmstat.read().unwrap());
+    Ok(())
 }
 
 

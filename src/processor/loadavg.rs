@@ -9,6 +9,8 @@ use serde::{Serialize, Deserialize};
 use crate::HISTORY;
 use anyhow::Result;
 
+use super::ProcessorError;
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct LoadavgInfo {
     pub timestamp: DateTime<Local>,
@@ -33,16 +35,23 @@ pub async fn process_loadavg_data(proc_data: &ProcData, statistics: &mut HashMap
     Ok(())
 }
 
-pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String), Statistic>)
-{
-    if !statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string())).unwrap().updated_value { return };
-    let timestamp = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string())).unwrap().last_timestamp;
-    let load_1 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string())).unwrap().last_value;
-    let load_5 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_5".to_string())).unwrap().last_value;
-    let load_15 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_15".to_string())).unwrap().last_value;
-    let current_runnable = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().last_value;
-    let total = statistics.get(&("loadavg".to_string(), "".to_string(), "total".to_string())).unwrap().last_value;
-    let last_pid = statistics.get(&("loadavg".to_string(), "".to_string(), "last_pid".to_string())).unwrap().last_value;
+pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()> {
+    if !statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_1".to_string() })?.updated_value { return Ok(()) };
+    let timestamp = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_1".to_string() })?.last_timestamp;
+    let load_1 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_1".to_string() })?.last_value;
+    let load_5 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_5".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_5".to_string() })?.last_value;
+    let load_15 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_15".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_15".to_string() })?.last_value;
+    let current_runnable = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "current_runnable".to_string() })?.last_value;
+    let total = statistics.get(&("loadavg".to_string(), "".to_string(), "total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "total".to_string() })?.last_value;
+    let last_pid = statistics.get(&("loadavg".to_string(), "".to_string(), "last_pid".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "last_pid".to_string() })?.last_value;
     HISTORY.loadavg.write().unwrap().push_back( LoadavgInfo {
         timestamp,
         load_1,
@@ -52,6 +61,8 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
         total,
         last_pid,
     });
+
+    Ok(())
 }
 
 pub async fn print_loadavg(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) {

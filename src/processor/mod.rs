@@ -13,6 +13,7 @@ use chrono::{DateTime, Local};
 use bounded_vec_deque::BoundedVecDeque;
 use std::sync::RwLock;
 use anyhow::{Result, Context};
+use thiserror::Error;
 use stat::{process_stat_data, add_cpu_total_to_history, read_stat_proc_data};
 use crate::processor::schedstat::{process_schedstat_data, read_schedstat_proc_data};
 use crate::processor::meminfo::{process_meminfo_data, read_meminfo_proc_data, add_memory_to_history, MemInfo};
@@ -23,6 +24,12 @@ use crate::processor::net_dev::{add_networkdevices_to_history, NetworkDeviceInfo
 use crate::processor::vmstat::{add_vmstat_to_history, VmStatInfo, process_vmstat_data, read_vmstat_proc_data};
 use serde::{Serialize, Deserialize};
 use crate::ARGS;
+
+#[derive(Error, Debug)]
+enum ProcessorError {
+    #[error("Unable to find key in hashmap: {hashmap}; keys: {key1}, {key2}, {key3}.")]
+    UnableToFindKeyInHashMap{hashmap: String, key1: String, key2: String, key3: String},
+}
 
 #[derive(Debug)]
 pub struct ProcData {
@@ -124,12 +131,12 @@ pub async fn process_data(proc_data: ProcData, statistics: &mut HashMap<(String,
 
 pub async fn add_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result <()> {
     add_cpu_total_to_history(statistics).await.with_context(|| "Proc stat history addition")?;
-    add_memory_to_history(statistics).await;
-    add_blockdevices_to_history(statistics).await;
-    add_networkdevices_to_history(statistics).await;
-    add_loadavg_to_history(statistics).await;
-    add_pressure_to_history(statistics).await;
-    add_vmstat_to_history(statistics).await;
+    add_memory_to_history(statistics).await.with_context(|| "Proc meminfo history addition")?;
+    add_blockdevices_to_history(statistics).await.with_context(|| "Sys blockdevices history addition")?;
+    add_networkdevices_to_history(statistics).await.with_context(|| "Proc netdev history addition")?;
+    add_loadavg_to_history(statistics).await.with_context(|| "Proc loadavg history addition")?;
+    add_pressure_to_history(statistics).await.with_context(|| "Proc pressure history addition")?;
+    add_vmstat_to_history(statistics).await.with_context(|| "Proc vmstat history addition")?;
     Ok(())
 }
 

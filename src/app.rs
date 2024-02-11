@@ -29,11 +29,11 @@ pub async fn app() -> Result<()> {
         if ! ARGS.deamon {
             let print_header = output_counter % ARGS.header_print == 0;
             match ARGS.output {
-                OutputOptions::SarU => print_all_cpu(&current_statistics, "sar-u", print_header).await,
+                OutputOptions::SarU => print_all_cpu(&current_statistics, "sar-u", print_header).await.with_context(|| "print_all_cpu sar-u")?,
                 OutputOptions::SarB => print_vmstat(&current_statistics, "sar-B", print_header).await,
                 OutputOptions::Sarb => print_diskstats(&current_statistics, "sar-b", print_header).await,
-                OutputOptions::SarUAll => print_all_cpu(&current_statistics, "sar-u-ALL", print_header).await,
-                OutputOptions::CpuAll => print_all_cpu(&current_statistics, "cpu-all", print_header).await,
+                OutputOptions::SarUAll => print_all_cpu(&current_statistics, "sar-u-ALL", print_header).await.with_context(|| "print_all_cpu sar-u-ALL")?,
+                OutputOptions::CpuAll => print_all_cpu(&current_statistics, "cpu-all", print_header).await.with_context(|| "print_all_cpu cpu-all")?,
                 OutputOptions::Schedstat => print_per_cpu(&current_statistics, "schedstat").await,
                 OutputOptions::MpstatPAll => print_per_cpu(&current_statistics, "mpstat-P-ALL").await,
                 OutputOptions::PerCpuAll => print_per_cpu(&current_statistics, "per-cpu-all").await,
@@ -54,7 +54,7 @@ pub async fn app() -> Result<()> {
                 OutputOptions::SarQ => print_loadavg(&current_statistics, "sar-q-LOAD", print_header).await,
                 OutputOptions::SarS => print_meminfo(&current_statistics, "sar-S", print_header).await,
                 OutputOptions::SarW => print_vmstat(&current_statistics, "sar-W", print_header).await,
-                OutputOptions::Sarw => print_all_cpu(&current_statistics, "sar-w", print_header).await,
+                OutputOptions::Sarw => print_all_cpu(&current_statistics, "sar-w", print_header).await.with_context(|| "print_all_cpu sar-w")?,
                 OutputOptions::Vmstat => print_vmstat(&current_statistics, "vmstat", print_header).await,
             }
             output_counter += 1;
