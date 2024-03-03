@@ -268,7 +268,7 @@ pub async fn print_diskstats(
     statistics: &HashMap<(String, String, String), Statistic>,
     output: &str,
     print_header: bool,
-)
+) -> Result<()>
 {
     let disk_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "blockdevice")
@@ -293,7 +293,8 @@ pub async fn print_diskstats(
                 );
     }
 
-    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().updated_value { return; };
+    if !statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_reads_completed_success".to_string() })?.updated_value { return Ok(()) };
 
     match output {
         "sar-d" => {
@@ -387,19 +388,28 @@ pub async fn print_diskstats(
     }
     // https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/tests/12.0.1/rd_stats.c#L711 
     if output == "sar-b" {
-        let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
+        let timestamp = statistics.get(&("blockdevice".to_string(), disk_list[0].to_string(), "stat_reads_completed_success".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_reads_completed_success".to_string() })?.last_timestamp;
         let mut total_reads_completed_success = 0_f64;
-        for disk_name in &disk_list { total_reads_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value; };
         let mut total_reads_sectors = 0_f64;
-        for disk_name in &disk_list { total_reads_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value; };
         let mut total_writes_completed_success = 0_f64;
-        for disk_name in &disk_list { total_writes_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value; };
         let mut total_writes_sectors = 0_f64;
-        for disk_name in &disk_list { total_writes_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value; };
         let mut total_discards_completed_success = 0_f64;
-        for disk_name in &disk_list { total_discards_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_completed_success".to_string())).unwrap().per_second_value; };
         let mut total_discards_sectors = 0_f64;
-        for disk_name in &disk_list { total_discards_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_sectors".to_string())).unwrap().per_second_value; };
+        for disk_name in &disk_list { 
+            total_reads_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_reads_completed_success".to_string() })?.per_second_value;
+            total_reads_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_reads_sectors".to_string() })?.per_second_value;
+            total_writes_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_writes_completed_success".to_string() })?.per_second_value;
+            total_writes_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_writes_sectors".to_string() })?.per_second_value;
+            total_discards_completed_success += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_discards_completed_success".to_string() })?.per_second_value;
+            total_discards_sectors += statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_list[0].to_string(), key3: "stat_discards_sectors".to_string() })?.per_second_value;
+        }
         println!("{:10} {:7}    {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2} {:10.2}",
             timestamp.format("%H:%M:%S"),
             "",
@@ -413,31 +423,52 @@ pub async fn print_diskstats(
         );
     } else {
         for disk_name in disk_list {
-            let timestamp = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().last_timestamp;
+            let timestamp = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_completed_success".to_string() })?.last_timestamp;
             // reads
-            let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string())).unwrap().per_second_value;
-            let reads_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_merged".to_string())).unwrap().per_second_value;
-            let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
-            let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
-            let reads_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_time_spent_ms".to_string())).unwrap().per_second_value;
+            let reads_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_completed_success".to_string() })?.per_second_value;
+            let reads_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_merged".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_merged".to_string() })?.per_second_value;
+            let reads_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_sectors".to_string() })?.per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let reads_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_sectors".to_string() })?.delta_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let reads_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_reads_time_spent_ms".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_reads_time_spent_ms".to_string() })?.per_second_value;
             // writes
-            let writes_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string())).unwrap().per_second_value;
-            let writes_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_merged".to_string())).unwrap().per_second_value;
-            let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
-            let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string())).unwrap().delta_value * 512_f64; // convert 512 bytes sector reads to bytes
-            let writes_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_time_spent_ms".to_string())).unwrap().per_second_value;
+            let writes_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_writes_completed_success".to_string() })?.per_second_value;
+            let writes_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_merged".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_writes_merged".to_string() })?.per_second_value;
+            let writes_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_writes_sectors".to_string() })?.per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let writes_bytes_total = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_writes_sectors".to_string() })?.delta_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let writes_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_writes_time_spent_ms".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_writes_time_spent_ms".to_string() })?.per_second_value;
             // discards
-            let discards_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_completed_success".to_string())).unwrap().per_second_value;
-            let discards_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_merged".to_string())).unwrap().per_second_value;
-            let discards_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_sectors".to_string())).unwrap().per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
-            let discards_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_time_spent_ms".to_string())).unwrap().per_second_value;
+            let discards_completed_success = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_completed_success".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_discards_completed_success".to_string() })?.per_second_value;
+            let discards_merged = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_merged".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_discards_merged".to_string() })?.per_second_value;
+            let discards_bytes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_sectors".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_discards_sectors".to_string() })?.per_second_value * 512_f64; // convert 512 bytes sector reads to bytes
+            let discards_time_ms = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_discards_time_spent_ms".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_discards_time_spent_ms".to_string() })?.per_second_value;
             //
-            let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string())).unwrap().per_second_value / 1000_f64; // convert milliseconds to seconds
-            let inflight_reads = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "inflight_reads".to_string())).unwrap().last_value;
-            let inflight_writes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "inflight_writes".to_string())).unwrap().last_value;
-            let queue_nr_requests = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nr_requests".to_string())).unwrap().last_value;
-            let current_max_io_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_sectors_kb".to_string())).unwrap().last_value;
-            let limit_max_io_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_hw_sectors_kb".to_string())).unwrap().last_value;
+            let queue_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "stat_ios_weighted_time_spent_ms".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "stat_ios_weighted_time_spent_ms".to_string() })?.per_second_value / 1000_f64; // convert milliseconds to seconds
+            let inflight_reads = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "inflight_reads".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "inflight_reads".to_string() })?.last_value;
+            let inflight_writes = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "inflight_writes".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "inflight_writes".to_string() })?.last_value;
+            let queue_nr_requests = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_nr_requests".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "queue_nr_requests".to_string() })?.last_value;
+            let current_max_io_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_sectors_kb".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "queue_max_sectors_kb".to_string() })?.last_value;
+            let limit_max_io_size = statistics.get(&("blockdevice".to_string(), disk_name.to_string(), "queue_max_hw_sectors_kb".to_string()))
+                .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "blockdevice".to_string(), key2: disk_name.to_string(), key3: "queue_max_hw_sectors_kb".to_string() })?.last_value;
 
     
             let mut total_average_request_size = (reads_bytes + writes_bytes) / (reads_completed_success + writes_completed_success);
@@ -550,5 +581,6 @@ pub async fn print_diskstats(
             }
         }
     }
+    Ok(())
 }
 

@@ -161,7 +161,10 @@ pub async fn add_pressure_to_history(statistics: &HashMap<(String, String, Strin
     Ok(())
 }
 
-pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) {
+pub async fn print_psi(
+    statistics: &HashMap<(String, String, String), Statistic>, 
+    output: &str, print_header: bool
+) -> Result <()> {
     if print_header {
         match output {
             "sar-q-CPU" => {
@@ -205,33 +208,55 @@ pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>
             &_ => todo! {},
         }
     }
-    if !statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap_or(&Statistic::default()).updated_value { return };
-    let timestamp = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().last_timestamp;
-    let cpu_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap().last_value;
-    let cpu_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg60".to_string())).unwrap().last_value;
-    let cpu_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg300".to_string())).unwrap().last_value;
-    let cpu_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_total".to_string())).unwrap().per_second_value;
+    if !statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string())).unwrap_or(&Statistic::default()).updated_value { return Ok(()) };
+
+    let timestamp = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "cpu_some_avg10".to_string() })?.last_timestamp;
+    let cpu_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "cpu_some_avg10".to_string() })?.last_value;
+    let cpu_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg60".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "cpu_some_avg60".to_string() })?.last_value;
+    let cpu_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_avg300".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "cpu_some_avg300".to_string() })?.last_value;
+    let cpu_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_some_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "cpu_some_total".to_string() })?.per_second_value;
     // these are currently not used, but are added to the kernel source
     //let cpu_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg10".to_string())).unwrap().last_value;
     //let cpu_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg60".to_string())).unwrap().last_value;
     //let cpu_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_avg300".to_string())).unwrap().last_value;
     //let cpu_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "cpu_full_total".to_string())).unwrap().per_second_value;
-    let mem_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg10".to_string())).unwrap().last_value;
-    let mem_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg60".to_string())).unwrap().last_value;
-    let mem_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg300".to_string())).unwrap().last_value;
-    let mem_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_total".to_string())).unwrap().per_second_value;
-    let mem_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg10".to_string())).unwrap().last_value;
-    let mem_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg60".to_string())).unwrap().last_value;
-    let mem_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg300".to_string())).unwrap().last_value;
-    let mem_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_total".to_string())).unwrap().per_second_value;
-    let io_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg10".to_string())).unwrap().last_value;
-    let io_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg60".to_string())).unwrap().last_value;
-    let io_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg300".to_string())).unwrap().last_value;
-    let io_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_total".to_string())).unwrap().per_second_value;
-    let io_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg10".to_string())).unwrap().last_value;
-    let io_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg60".to_string())).unwrap().last_value;
-    let io_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg300".to_string())).unwrap().last_value;
-    let io_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_total".to_string())).unwrap().per_second_value;
+    let mem_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_some_avg10".to_string() })?.last_value;
+    let mem_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg60".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_some_avg60".to_string() })?.last_value;
+    let mem_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_avg300".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_some_avg300".to_string() })?.last_value;
+    let mem_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_some_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_some_total".to_string() })?.per_second_value;
+    let mem_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_full_avg10".to_string() })?.last_value;
+    let mem_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg60".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_full_avg60".to_string() })?.last_value;
+    let mem_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_avg300".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_full_avg300".to_string() })?.last_value;
+    let mem_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "memory_full_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "memory_full_total".to_string() })?.per_second_value;
+    let io_some_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_some_avg10".to_string() })?.last_value;
+    let io_some_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg60".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_some_avg60".to_string() })?.last_value;
+    let io_some_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_avg300".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_some_avg300".to_string() })?.last_value;
+    let io_some_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_some_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_some_total".to_string() })?.per_second_value;
+    let io_full_avg10 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg10".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_full_avg10".to_string() })?.last_value;
+    let io_full_avg60 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg60".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_full_avg60".to_string() })?.last_value;
+    let io_full_avg300 = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_avg300".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_full_avg300".to_string() })?.last_value;
+    let io_full_total = statistics.get(&("pressure".to_string(), "".to_string(), "io_full_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "pressure".to_string(), key2: "".to_string(), key3: "io_full_total".to_string() })?.per_second_value;
     match output
     {
         "sar-q-CPU" => {
@@ -274,4 +299,6 @@ pub async fn print_psi(statistics: &HashMap<(String, String, String), Statistic>
         },
         &_ => todo! {},
     }
+
+    Ok(())
 }

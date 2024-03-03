@@ -47,8 +47,7 @@ pub async fn print_meminfo(
     statistics: &HashMap<(String, String, String), Statistic>,
     output: &str,
     print_header: bool
-)
-{
+) -> Result <()> {
     if print_header {
         match output {
             "sar-r" => {
@@ -112,30 +111,54 @@ pub async fn print_meminfo(
         }
     }
 
-    let timestamp = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string())).unwrap().last_timestamp;
-    let memfree = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string())).unwrap().last_value;
-    let memavailable = statistics.get(&("meminfo".to_string(), "".to_string(), "memavailable".to_string())).unwrap().last_value;
-    let memtotal = statistics.get(&("meminfo".to_string(), "".to_string(), "memtotal".to_string())).unwrap().last_value;
-    let buffers = statistics.get(&("meminfo".to_string(), "".to_string(), "buffers".to_string())).unwrap().last_value;
-    let cached = statistics.get(&("meminfo".to_string(), "".to_string(), "cached".to_string())).unwrap().last_value;
-    let committed_as = statistics.get(&("meminfo".to_string(), "".to_string(), "committed_as".to_string())).unwrap().last_value;
-    let swaptotal = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string())).unwrap().last_value;
-    let active = statistics.get(&("meminfo".to_string(), "".to_string(), "active".to_string())).unwrap().last_value;
-    let inactive = statistics.get(&("meminfo".to_string(), "".to_string(), "inactive".to_string())).unwrap().last_value;
-    let dirty = statistics.get(&("meminfo".to_string(), "".to_string(), "dirty".to_string())).unwrap().last_value;
-    let anonpages = statistics.get(&("meminfo".to_string(), "".to_string(), "anonpages".to_string())).unwrap().last_value;
-    let slab = statistics.get(&("meminfo".to_string(), "".to_string(), "slab".to_string())).unwrap().last_value;
-    let kernelstack = statistics.get(&("meminfo".to_string(), "".to_string(), "kernelstack".to_string())).unwrap().last_value;
-    let pagetables = statistics.get(&("meminfo".to_string(), "".to_string(), "pagetables".to_string())).unwrap().last_value;
-    let vmallocused = statistics.get(&("meminfo".to_string(), "".to_string(), "vmallocused".to_string())).unwrap().last_value;
-    let hugepages_total = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_total".to_string())).unwrap().last_value;
-    let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string())).unwrap().last_value;
-    let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string())).unwrap().last_value;
-    let hugepages_reserved = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_rsvd".to_string())).unwrap().last_value;
-    let hugepages_surplus = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_surp".to_string())).unwrap().last_value;
-    let swap_free = statistics.get(&("meminfo".to_string(), "".to_string(), "swapfree".to_string())).unwrap().last_value;
-    let swap_total = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string())).unwrap().last_value;
-    let swap_cached = statistics.get(&("meminfo".to_string(), "".to_string(), "swapcached".to_string())).unwrap().last_value;
+    let timestamp = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memfree".to_string() })?.last_timestamp;
+    let memfree = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memfree".to_string() })?.last_value;
+    let memavailable = statistics.get(&("meminfo".to_string(), "".to_string(), "memavailable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memavailable".to_string() })?.last_value;
+    let memtotal = statistics.get(&("meminfo".to_string(), "".to_string(), "memtotal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memtotal".to_string() })?.last_value;
+    let buffers = statistics.get(&("meminfo".to_string(), "".to_string(), "buffers".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "buffers".to_string() })?.last_value;
+    let cached = statistics.get(&("meminfo".to_string(), "".to_string(), "cached".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "cached".to_string() })?.last_value;
+    let committed_as = statistics.get(&("meminfo".to_string(), "".to_string(), "committed_as".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "committed_as".to_string() })?.last_value;
+    let swaptotal = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swaptotal".to_string() })?.last_value;
+    let active = statistics.get(&("meminfo".to_string(), "".to_string(), "active".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "active".to_string() })?.last_value;
+    let inactive = statistics.get(&("meminfo".to_string(), "".to_string(), "inactive".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "inactive".to_string() })?.last_value;
+    let dirty = statistics.get(&("meminfo".to_string(), "".to_string(), "dirty".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "dirty".to_string() })?.last_value;
+    let anonpages = statistics.get(&("meminfo".to_string(), "".to_string(), "anonpages".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "anonpages".to_string() })?.last_value;
+    let slab = statistics.get(&("meminfo".to_string(), "".to_string(), "slab".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "slab".to_string() })?.last_value;
+    let kernelstack = statistics.get(&("meminfo".to_string(), "".to_string(), "kernelstack".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "kernelstack".to_string() })?.last_value;
+    let pagetables = statistics.get(&("meminfo".to_string(), "".to_string(), "pagetables".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "pagetables".to_string() })?.last_value;
+    let vmallocused = statistics.get(&("meminfo".to_string(), "".to_string(), "vmallocused".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "vmallocused".to_string() })?.last_value;
+    let hugepages_total = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_total".to_string() })?.last_value;
+    let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_free".to_string() })?.last_value;
+    let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepagesize".to_string() })?.last_value;
+    let hugepages_reserved = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_rsvd".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_rsvd".to_string() })?.last_value;
+    let hugepages_surplus = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_surp".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_surp".to_string() })?.last_value;
+    let swap_free = statistics.get(&("meminfo".to_string(), "".to_string(), "swapfree".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swapfree".to_string() })?.last_value;
+    let swap_total = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swaptotal".to_string() })?.last_value;
+    let swap_cached = statistics.get(&("meminfo".to_string(), "".to_string(), "swapcached".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swapcached".to_string() })?.last_value;
     // this is what sar defines as non-used memory; see: https://github.com/sysstat/sysstat/blob/499f5b153e9707892bb8841d37e6ed3a0aa617e2/pr_stats.c#L809
     let mut non_used_memory = memfree + buffers + cached + slab;
     if non_used_memory > memtotal { non_used_memory = memtotal };
@@ -201,6 +224,7 @@ pub async fn print_meminfo(
         },
         &_ => todo!(),
     }
+    Ok(())
 }
 
 pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String), Statistic>) -> Result<()> {

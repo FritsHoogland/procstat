@@ -172,8 +172,7 @@ pub async fn add_networkdevices_to_history(statistics: &HashMap<(String, String,
 pub async fn print_net_dev(
     statistics: &HashMap<(String, String, String), Statistic>,
     output: &str,
-)
-{
+) -> Result <()> {
     let device_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "net_dev")
         .map(|(_, device, _)| device)
@@ -181,7 +180,8 @@ pub async fn print_net_dev(
         .into_iter()
         .collect();
 
-    if !statistics.get(&("net_dev".to_string(), device_list[0].to_string(), "receive_bytes".to_string())).unwrap().updated_value { return; };
+    if !statistics.get(&("net_dev".to_string(), device_list[0].to_string(), "receive_bytes".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device_list[0].to_string(), key3: "receive_bytes".to_string() })?.updated_value { return Ok(()) };
 
     match output
     {
@@ -218,23 +218,40 @@ pub async fn print_net_dev(
 
     for device in device_list
     {
-        let timestamp = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_bytes".to_string())).unwrap().last_timestamp;
-        let receive_packets = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_packets".to_string())).unwrap().per_second_value;
-        let transmit_packets = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_packets".to_string())).unwrap().per_second_value;
-        let receive_bytes = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_bytes".to_string())).unwrap().per_second_value;
-        let transmit_bytes = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_bytes".to_string())).unwrap().per_second_value;
-        let receive_compressed = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_compressed".to_string())).unwrap().per_second_value;
-        let transmit_compressed = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_compressed".to_string())).unwrap().per_second_value;
-        let receive_multicast = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_multicast".to_string())).unwrap().per_second_value;
-        let receive_errors = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_errors".to_string())).unwrap().per_second_value;
-        let transmit_errors = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_errors".to_string())).unwrap().per_second_value;
-        let transmit_collisions = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_collisions".to_string())).unwrap().per_second_value;
-        let receive_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_drop".to_string())).unwrap().per_second_value;
-        let transmit_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_drop".to_string())).unwrap().per_second_value;
-        let transmit_carrier = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_carrier".to_string())).unwrap().per_second_value;
-        let receive_frame = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_frame".to_string())).unwrap().per_second_value;
-        let receive_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_fifo".to_string())).unwrap().per_second_value;
-        let transmit_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_fifo".to_string())).unwrap().per_second_value;
+        let timestamp = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_bytes".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_bytes".to_string() })?.last_timestamp;
+        let receive_packets = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_packets".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_packets".to_string() })?.per_second_value;
+        let transmit_packets = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_packets".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_packet".to_string() })?.per_second_value;
+        let receive_bytes = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_bytes".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_bytes".to_string() })?.per_second_value;
+        let transmit_bytes = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_bytes".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_bytes".to_string() })?.per_second_value;
+        let receive_compressed = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_compressed".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_compressed".to_string() })?.per_second_value;
+        let transmit_compressed = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_compressed".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_compressed".to_string() })?.per_second_value;
+        let receive_multicast = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_multicast".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_multicast".to_string() })?.per_second_value;
+        let receive_errors = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_errors".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_errors".to_string() })?.per_second_value;
+        let transmit_errors = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_errors".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_errors".to_string() })?.per_second_value;
+        let transmit_collisions = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_collisions".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_collisions".to_string() })?.per_second_value;
+        let receive_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_drop".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_drop".to_string() })?.per_second_value;
+        let transmit_drop = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_drop".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_drop".to_string() })?.per_second_value;
+        let transmit_carrier = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_carrier".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_carrier".to_string() })?.per_second_value;
+        let receive_frame = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_frame".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_frame".to_string() })?.per_second_value;
+        let receive_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "receive_fifo".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "receive_fifo".to_string() })?.per_second_value;
+        let transmit_fifo = statistics.get(&("net_dev".to_string(), device.to_string(), "transmit_fifo".to_string()))
+            .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "net_dev".to_string(), key2: device.to_string(), key3: "transmit_fifo".to_string() })?.per_second_value;
 
         match output
         {
@@ -269,4 +286,5 @@ pub async fn print_net_dev(
             &_ => todo!(),
         }
     }
+    Ok(())
 }

@@ -65,7 +65,11 @@ pub async fn add_loadavg_to_history(statistics: &HashMap<(String, String, String
     Ok(())
 }
 
-pub async fn print_loadavg(statistics: &HashMap<(String, String, String), Statistic>, output: &str, print_header: bool) {
+pub async fn print_loadavg(
+    statistics: &HashMap<(String, String, String), Statistic>, 
+    output: &str, print_header: bool
+) -> Result<()> {
+
     if print_header {
         match output {
             "sar-q-LOAD" => {
@@ -83,14 +87,24 @@ pub async fn print_loadavg(statistics: &HashMap<(String, String, String), Statis
             &_ => todo!(),
         }
     }
-    if !statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().updated_value { return };
-    let timestamp = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().last_timestamp;
-    let current_runnable = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string())).unwrap().last_value;
-    let total = statistics.get(&("loadavg".to_string(), "".to_string(), "total".to_string())).unwrap().last_value;
-    let load_1 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string())).unwrap().last_value;
-    let load_5 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_5".to_string())).unwrap().last_value;
-    let load_15 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_15".to_string())).unwrap().last_value;
-    let blocked = statistics.get(&("stat".to_string(), "".to_string(), "processes_blocked".to_string())).unwrap().last_value;
+
+    if !statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "current_runnable".to_string() })?.updated_value { return Ok(()) };
+    let timestamp = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "current_runnable".to_string() })?.last_timestamp;
+    let current_runnable = statistics.get(&("loadavg".to_string(), "".to_string(), "current_runnable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "current_runnable".to_string() })?.last_value;
+    let total = statistics.get(&("loadavg".to_string(), "".to_string(), "total".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "total".to_string() })?.last_value;
+    let load_1 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_1".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_1".to_string() })?.last_value;
+    let load_5 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_5".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_5".to_string() })?.last_value;
+    let load_15 = statistics.get(&("loadavg".to_string(), "".to_string(), "load_15".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "load_15".to_string() })?.last_value;
+    let blocked = statistics.get(&("stat".to_string(), "".to_string(), "processes_blocked".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "loadavg".to_string(), key2: "".to_string(), key3: "processes_blocked".to_string() })?.last_value;
+
     match output {
         "sar-q-LOAD" => {
             println!("{:10} {:7}    {:10.0} {:10.0} {:10.2} {:10.2} {:10.2} {:10.0}",
@@ -106,4 +120,6 @@ pub async fn print_loadavg(statistics: &HashMap<(String, String, String), Statis
         }
         &_ => todo!(),
     }
+
+    Ok(())
 }
