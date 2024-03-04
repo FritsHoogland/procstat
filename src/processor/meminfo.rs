@@ -27,6 +27,7 @@ pub struct MemInfo {
     pub anonpages: f64,
     pub hugepages_total: f64,
     pub hugepages_free: f64,
+    pub hugepages_reserved: f64,
     pub hugepagesize: f64,
     pub swaptotal: f64,
     pub swapfree: f64,
@@ -264,6 +265,8 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_total".to_string() })?.last_value;
     let hugepages_free = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_free".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_free".to_string() })?.last_value;
+    let hugepages_reserved = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepages_rsvd".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepages_rsvd".to_string() })?.last_value;
     let hugepagesize = statistics.get(&("meminfo".to_string(), "".to_string(), "hugepagesize".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "hugepagesize".to_string() })?.last_value;
     let swaptotal = statistics.get(&("meminfo".to_string(), "".to_string(), "swaptotal".to_string()))
@@ -288,6 +291,7 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
         anonpages,
         hugepages_total,
         hugepages_free,
+        hugepages_reserved,
         hugepagesize,
         swaptotal,
         swapfree,

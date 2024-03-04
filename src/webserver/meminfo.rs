@@ -13,8 +13,7 @@ use crate::ARGS;
 
 pub fn create_memory_plot(
     buffer: &mut [u8]
-)
-{
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
     memory_plot(&mut multi_backend, 0);
@@ -22,15 +21,16 @@ pub fn create_memory_plot(
 
 pub fn create_memory_psi_plot(
     buffer: &mut [u8]
-)
-{
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     memory_plot(&mut multi_backend, 0);
     pressure_memory_plot(&mut multi_backend, 1);
 }
 
-pub fn create_memory_swap_plot( buffer: &mut [u8]) {
+pub fn create_memory_swap_plot( 
+    buffer: &mut [u8]
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
     memory_plot(&mut multi_backend, 0);
@@ -39,8 +39,7 @@ pub fn create_memory_swap_plot( buffer: &mut [u8]) {
 
 pub fn create_memory_swap_inout_plot(
     buffer: &mut [u8]
-)
-{
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height)).into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
     memory_plot(&mut multi_backend, 0);
@@ -50,8 +49,7 @@ pub fn create_memory_swap_inout_plot(
 pub fn memory_plot(
     multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
-)
-{
+) {
     let historical_data_read = HISTORY.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()
@@ -117,7 +115,7 @@ pub fn memory_plot(
     // The next memory areas should be stacked, so the 'top' memory allocation should be shown first, then one allocation removed, etc.
     // This is a manually constructed stacked area graph.
     // First hugepages used.
-    // hugepages_used, hugepages_free (=hugepages_total), buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
+    // hugepages_used, hugepages_reserved, hugepages_free (=hugepages_total), buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
     let min_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     let max_hugepages_used = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     // issue: https://github.com/FritsHoogland/procstat/issues/1: hugepages_used should be
@@ -125,6 +123,14 @@ pub fn memory_plot(
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_total * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages used", min_hugepages_used/1024_f64, max_hugepages_used/1024_f64, ((latest.map_or(0_f64, |latest| latest.hugepages_total) - latest.map_or(0_f64, |latest| latest.hugepages_free)) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
+    palette99_pick += 1;
+    // hugepages_reserved, hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
+    let min_hugepages_reserved = historical_data_read.iter().map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    let max_hugepages_reserved = historical_data_read.iter().map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (((meminfo.hugepages_reserved + meminfo.hugepages_free) * meminfo.hugepagesize) + meminfo.buffers + meminfo.swapcached + meminfo.kernelstack + meminfo.hardwarecorrupted + meminfo.slab + meminfo.pagetables + meminfo.cached + meminfo.anonpages + meminfo.memfree) / 1024_f64)), 0.0, Palette99::pick(palette99_pick)))
+        .unwrap()
+        .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages reserved", min_hugepages_reserved/1024_f64, max_hugepages_reserved/1024_f64, (latest.map_or(0_f64, |latest| latest.hugepages_reserved) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], Palette99::pick(palette99_pick).filled()));
     palette99_pick += 1;
     // hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
@@ -250,7 +256,6 @@ pub fn memory_plot(
         // pages_high
         contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (min_free_kbytes+(min_free_kbytes/2_f64)) / 1024_f64)),  ShapeStyle { color: BLACK.into(), filled: false, stroke_width: 1} )).unwrap();
     }
-    //
     // draw the legend
     contextarea.configure_series_labels()
         .border_style(BLACK)
@@ -264,8 +269,7 @@ pub fn memory_plot(
 fn swap_space_plot(
     multi_backend: &mut  [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
-)
-{
+) {
     let historical_data_read = HISTORY.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()

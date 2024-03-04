@@ -73,6 +73,12 @@ System wide network IO:
 ## Warning
 This is a preview version. Feedback is appreciated, as well as any issues that are encountered.
 
+# Getting a backtrace
+If an error is encountered, and you want a backtrace for it, set:
+```
+RUST_BACKTRACE=1
+```
+
 # Building `procstat`
 Please mind the building steps are validated for linux and MacOS.
 `procstat` requires the linux operating system and access to the `/proc` and `/sys` filesystems to perform its function.
