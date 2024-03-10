@@ -146,3 +146,46 @@ jobs:
         files: 'target/debian/*deb'
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
         release-tag: "latest"
+
+  build_macos_latest:
+    if: true
+    runs-on: macos-latest
+    needs: recreate_latest_release
+    strategy:
+      matrix:
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.target }}
+        override: true
+
+    - name: cargo build --release
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --release --target=${{ matrix.target }}
+   
+    - name: obtain current app version
+      run: echo "CARGO_APP_VERSION=$(grep ^version Cargo.toml | sed 's/.*"\(.*\)"/\1/')" >> $GITHUB_ENV    
+
+    - name: strip and tar up executable
+      run: |
+        strip -S target/${{ matrix.target}}/release/procstat
+        tar czvf procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz -C target/${{ matrix.target }}/release procstat
+
+    - name: upload tarball to release
+      uses: "AButler/upload-release-assets@v2.0"
+      with:
+        files: procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        release-tag: "latest"

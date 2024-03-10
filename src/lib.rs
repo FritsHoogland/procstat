@@ -62,6 +62,7 @@ enum OutputOptions {
     Ioq,
     Ios,
     Schedstat,
+    Free,
 }
 
 #[derive(Debug, Parser, Clone)]

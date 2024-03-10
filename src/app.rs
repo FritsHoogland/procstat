@@ -56,6 +56,7 @@ pub async fn app() -> Result<()> {
                 OutputOptions::SarW => print_vmstat(&current_statistics, "sar-W", print_header).await.with_context(|| "print_vmstat sar-W")?,
                 OutputOptions::Sarw => print_all_cpu(&current_statistics, "sar-w", print_header).await.with_context(|| "print_all_cpu sar-w")?,
                 OutputOptions::Vmstat => print_vmstat(&current_statistics, "vmstat", print_header).await.with_context(|| "print_vmstat vmstat")?,
+                OutputOptions::Free => print_vmstat(&current_statistics, "free", print_header).await.with_context(|| "print_vmstat free")?,
             }
             output_counter += 1;
 

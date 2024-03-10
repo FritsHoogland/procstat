@@ -480,6 +480,20 @@ pub async fn print_vmstat(
                     "gu",
                 );
             },
+            "free" => {
+                //                total        used        free      shared  buff/cache   available
+                // Mem:            3907         280        3080           0         690        3627
+                // Swap:              0           0           0
+                println!("{:10}       {:>10} {:>10} {:>10} {:>10} {:>10} {:>10}",
+                    "Timestamp",
+                    "Total",
+                    "Used",
+                    "Free",
+                    "Shared",
+                    "Buff/cache",
+                    "Available",
+                );
+            }
             &_ => todo! {},
         }
     }
@@ -507,10 +521,14 @@ pub async fn print_vmstat(
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swaptotal".to_string() })?.last_value;
     let mem_free = statistics.get(&("meminfo".to_string(), "".to_string(), "memfree".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memfree".to_string() })?.last_value;
+    let mem_total = statistics.get(&("meminfo".to_string(), "".to_string(), "memtotal".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memtotal".to_string() })?.last_value;
     let mem_buffers = statistics.get(&("meminfo".to_string(), "".to_string(), "buffers".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "buffers".to_string() })?.last_value;
     let mem_cached = statistics.get(&("meminfo".to_string(), "".to_string(), "cached".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "cached".to_string() })?.last_value;
+    let mem_available = statistics.get(&("meminfo".to_string(), "".to_string(), "memavailable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "memavailable".to_string() })?.last_value;
     let disk_list: Vec<_> = statistics.keys()
         .filter(|(group, _, _)| group == "blockdevice")
         .map(|(_, disk_name, _)| disk_name)
@@ -579,25 +597,48 @@ pub async fn print_vmstat(
         },
         "vmstat" => {
             println!("{:10} {:4.0} {:4.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:8.0} {:4.0} {:4.0} {:4.0} {:4.0} {:4.0} {:4.0}",
-                 timestamp.format("%H:%M:%S"),
-                 processes_running - 1_f64, // not count ourselves
-                 processes_blocked,
-                 (swap_total-swap_free).max(0_f64) / 1024_f64,
-                 mem_free / 1024_f64,
-                 mem_buffers / 1024_f64,
-                 mem_cached / 1024_f64,
-                 pswpin,
-                 pswpout,
-                 total_reads_sectors / 1024_f64,
-                 total_writes_sectors / 1024_f64,
-                 interrupts,
-                 context_switches,
-                 user / total * 100_f64,
-                 system / total * 100_f64,
-                 idle / total * 100_f64,
-                 iowait / total * 100_f64,
-                 steal / total * 100_f64,
+                timestamp.format("%H:%M:%S"),
+                processes_running - 1_f64, // not count ourselves
+                processes_blocked,
+                (swap_total-swap_free).max(0_f64) / 1024_f64,
+                mem_free / 1024_f64,
+                mem_buffers / 1024_f64,
+                mem_cached / 1024_f64,
+                pswpin,
+                pswpout,
+                total_reads_sectors / 1024_f64,
+                total_writes_sectors / 1024_f64,
+                interrupts,
+                context_switches,
+                user / total * 100_f64,
+                system / total * 100_f64,
+                idle / total * 100_f64,
+                iowait / total * 100_f64,
+                steal / total * 100_f64,
                  guest_user / total * 100_f64,
+            );
+        }
+        "free" => {
+            //                total        used        free      shared  buff/cache   available
+            // Mem:            3907         280        3080           0         690        3627
+            // Swap:              0           0           0
+            println!("{:10} Mem:  {:>10.0} {:>10.0} {:>10.0} {:>10.0} {:>10.0} {:>10.0}",
+                timestamp.format("%H:%M:%S"),
+                mem_total / 1024_f64,
+                // it turns out there are multiple explanations of how 'used' is calculated
+                // .. and so far none of them create the same value as 'used' with the free command
+                // used on ubuntu 23.10. Let's take total-free-buffers-cached for now.
+                (mem_total-mem_free-mem_buffers-mem_cached) / 1024_f64,
+                mem_free / 1024_f64,
+                0_f64,
+                mem_buffers+mem_cached / 1024_f64,
+                mem_available / 1024_f64,
+            );
+            println!("{:10} Swap: {:>10.0} {:>10.0} {:>10.0}",
+                timestamp.format("%H:%M:%S"),
+                swap_total / 1024_f64,
+                (swap_total-swap_free).max(0_f64) / 1024_f64,
+                swap_free / 1024_f64,
             );
         }
         &_ => todo!{},
