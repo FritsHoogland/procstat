@@ -31,6 +31,12 @@ pub struct MemInfo {
     pub hugepagesize: f64,
     pub swaptotal: f64,
     pub swapfree: f64,
+    pub sunreclaim: f64,
+    pub sreclaimable: f64,
+    pub active_anon: f64,
+    pub inactive_anon: f64,
+    pub active_file: f64,
+    pub inactive_file: f64,
 }
 
 pub async fn read_meminfo_proc_data() -> Result<ProcMemInfo> {
@@ -273,6 +279,18 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swaptotal".to_string() })?.last_value;
     let swapfree = statistics.get(&("meminfo".to_string(), "".to_string(), "swapfree".to_string()))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "swapfree".to_string() })?.last_value;
+    let sunreclaim = statistics.get(&("meminfo".to_string(), "".to_string(), "sunreclaim".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "sunreclaim".to_string() })?.last_value;
+    let sreclaimable = statistics.get(&("meminfo".to_string(), "".to_string(), "sreclaimable".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "sreclaimable".to_string() })?.last_value;
+    let active_anon = statistics.get(&("meminfo".to_string(), "".to_string(), "active_anon".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "active_anon".to_string() })?.last_value;
+    let inactive_anon = statistics.get(&("meminfo".to_string(), "".to_string(), "inactive_anon".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "inactive_anon".to_string() })?.last_value;
+    let active_file = statistics.get(&("meminfo".to_string(), "".to_string(), "active_file".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "active_file".to_string() })?.last_value;
+    let inactive_file = statistics.get(&("meminfo".to_string(), "".to_string(), "inactive_file".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap { hashmap: "statistics".to_string(), key1: "meminfo".to_string(), key2: "".to_string(), key3: "inactive_file".to_string() })?.last_value;
     HISTORY.memory.write().unwrap().push_back( MemInfo {
         timestamp,
         memfree,
@@ -295,6 +313,12 @@ pub async fn add_memory_to_history(statistics: &HashMap<(String, String, String)
         hugepagesize,
         swaptotal,
         swapfree,
+        sunreclaim,
+        sreclaimable,
+        active_anon,
+        inactive_anon,
+        active_file,
+        inactive_file,
     });
 
     Ok(())

@@ -18,6 +18,8 @@ use crate::webserver::vmstat::{create_memory_alloc_plot, create_memory_alloc_psi
 use crate::{HISTORY, ARGS};
 use log::info;
 
+use self::meminfo::create_memory_active_inactive_plot;
+
 pub async fn webserver() {
     let app = Router::new()
         .route("/handler/:plot_1/:plot_2", get(handler_html))
@@ -110,6 +112,7 @@ pub async fn root_handler() -> Html<String>
      <li><a href="/handler/memory_psi_alloc/x" target="right">Memory-psi-alloc</a></li>
      <li><a href="/handler/memory_swap/x" target="right">Memory-swapspace</a></li>
      <li><a href="/handler/memory_swap_inout/x" target="right">Memory-swapspace-swapio</a></li>
+     <li><a href="/handler/memory_act_inact/x" target="right">Memory-active-inactive</a></li>
      {html_for_blockdevices}
      {html_for_blockdevices_psi}
      {html_for_blockdevices_extra}
@@ -145,6 +148,7 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "memory_psi_alloc" => create_memory_alloc_psi_plot(&mut buffer),
         "memory_swap" => create_memory_swap_plot(&mut buffer),
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer),
+        "memory_act_inact" => create_memory_active_inactive_plot(&mut buffer),
         &_ => todo!(),
     }
     let rgb_image = DynamicImage::ImageRgb8(image::RgbImage::from_raw(ARGS.graph_width, ARGS.graph_height, buffer).unwrap());
