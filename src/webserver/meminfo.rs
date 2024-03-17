@@ -131,14 +131,18 @@ pub fn memory_plot(
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages used", min_hugepages_used/1024_f64, max_hugepages_used/1024_f64, ((latest.map_or(0_f64, |latest| latest.hugepages_total) - latest.map_or(0_f64, |latest| latest.hugepages_free)) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREY_900.filled()));
-    // hugepages_reserved, hugepages_free, buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, mapped, cached, anonymous, memfree
+    // hugepages_reserved
+    // reserved hugepages are hugepages that are still counted as free
     let min_hugepages_reserved = historical_data_read.iter().map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     let max_hugepages_reserved = historical_data_read.iter().map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
-    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_reserved * meminfo.hugepagesize)+meminfo.memfree+meminfo.cached+meminfo.anonpages+meminfo.slab+meminfo.buffers+meminfo.pagetables+meminfo.hardwarecorrupted+meminfo.kernelstack) / 1024_f64)), 0.0, GREY_600))
+    contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, ((meminfo.hugepages_free * meminfo.hugepagesize)+meminfo.memfree+meminfo.cached+meminfo.anonpages+meminfo.slab+meminfo.buffers+meminfo.pagetables+meminfo.hardwarecorrupted+meminfo.kernelstack) / 1024_f64)), 0.0, GREY_600))
         .unwrap()
         .label(format!("{:25} {:10.2} {:10.2} {:10.2}", "hugepages reserved", min_hugepages_reserved/1024_f64, max_hugepages_reserved/1024_f64, (latest.map_or(0_f64, |latest| latest.hugepages_reserved) * latest.map_or(0_f64, |latest| latest.hugepagesize))/1024_f64))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREY_600.filled()));
     // hugepages_free
+    // actual free hugepages are hugepages_free - hugepages_reserved
+    // if no hugepages are reserved, the free hugepages here will overwrite the above
+    // hugepages_reserved drawing.
     let min_hugepages_free = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_free - meminfo.hugepages_reserved) * meminfo.hugepagesize).min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     let max_hugepages_free = historical_data_read.iter().map(|meminfo| (meminfo.hugepages_free - meminfo.hugepages_reserved) * meminfo.hugepagesize).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or_default();
     contextarea.draw_series(AreaSeries::new(historical_data_read.iter().map(|meminfo| (meminfo.timestamp, (((meminfo.hugepages_free - meminfo.hugepages_reserved) * meminfo.hugepagesize)+meminfo.memfree+meminfo.cached+meminfo.anonpages+meminfo.slab+meminfo.buffers+meminfo.pagetables+meminfo.hardwarecorrupted+meminfo.kernelstack) / 1024_f64)), 0.0, GREY_300))
