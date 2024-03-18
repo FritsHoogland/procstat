@@ -1,4 +1,5 @@
 use crate::ARGS;
+use chrono::Local;
 use std::time::Duration;
 use tokio::time::{self, MissedTickBehavior};
 use std::collections::HashMap;
@@ -7,6 +8,7 @@ use crate::processor::Statistic;
 use crate::processor::read_proc_data_and_process;
 use crate::OutputOptions;
 
+use crate::archiver::archive;
 use crate::processor::stat::{print_all_cpu, print_per_cpu};
 use crate::processor::vmstat::print_vmstat;
 use crate::processor::blockdevice::print_diskstats;
@@ -61,7 +63,20 @@ pub async fn app() -> Result<()> {
             output_counter += 1;
 
             if let Some(until) = ARGS.until {
-                if until < output_counter { break };
+                if until < output_counter { 
+                    if ARGS.archiver { 
+                        // this performs an "emergency write".
+                        // because the time is not exactly matched to the interval,
+                        // it is likely to archive data that is archived before.
+                        // the reader function does not complain about reading already read 
+                        // rows.
+                        match archive(Local::now()) {
+                            Ok(_) => {},
+                            Err(error) => return Err(error),
+                        } 
+                    }
+                    break;
+                };
             };
         }
     }
