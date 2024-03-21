@@ -1329,19 +1329,20 @@ dependencies = [
 
 [[package]]
 name = "proc_sys_parser"
-version = "0.1.18"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16fa1b5a852d1dfa48873f2a87b762a3a8e53c7f9502cc7cb95169e8f05d5989"
+checksum = "a5e717bfc5e32e1327ea8c9c28d9c2715a71875dca6fa4bcb387feccf4e4ffa3"
 dependencies = [
  "log",
  "nix",
  "rand",
+ "regex",
  "thiserror",
 ]
 
 [[package]]
 name = "procstat"
-version = "0.1.22"
+version = "0.1.23"
 dependencies = [
  "anyhow",
  "axum",

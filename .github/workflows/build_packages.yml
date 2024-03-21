@@ -140,7 +140,7 @@ jobs:
     - if: ${{ matrix.container == 'ubuntu:22.04' }}
       run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
 
-    - name: upload rpm to release
+    - name: upload deb to release
       uses: "AButler/upload-release-assets@v2.0"
       with:
         files: 'target/debian/*deb'
