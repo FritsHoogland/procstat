@@ -1,6 +1,6 @@
 [package]
 name = "procstat"
-version = "0.1.24"
+version = "0.1.25"
 edition = "2021"
 license = "apache-2.0"
 description = "A utility to show and extract runtime statistics from a linux system."
@@ -34,7 +34,7 @@ tokio = { version = "1.35.0", features = ["full"] }
 
 [package.metadata.generate-rpm]
 assets = [
-    { source = "target/release/procstat", dest = "/usr/local/bin/procstat", mode="0755" }
+    { source = "target/release/procstat", dest = "/usr/local/bin/procstat", mode = "0755" },
 ]
 release = "1.el8"
 
@@ -44,9 +44,7 @@ maintainer = "Frits Hoogland <fhoogland@gmail.com>"
 depends = "$auto"
 section = "utility"
 priority = "optional"
-assets = [
-    ["target/release/procstat", "/usr/local/bin/", "755"]
-]
+assets = [["target/release/procstat", "/usr/local/bin/", "755"]]
 
 [profile.release]
 debug = 1

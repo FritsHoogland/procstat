@@ -1,12 +1,11 @@
-
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
 use processor::HistoricalData;
 
+pub mod app;
+pub mod archiver;
 pub mod processor;
 pub mod webserver;
-pub mod archiver;
-pub mod app;
 
 static LABEL_AREA_SIZE_LEFT: i32 = 100;
 static LABEL_AREA_SIZE_RIGHT: i32 = 100;
@@ -78,39 +77,66 @@ pub struct Opts {
     #[arg(short = 'o', long, value_name = "option", value_enum, default_value_t = OutputOptions::SarU )]
     output: OutputOptions,
     /// Print header
-    #[arg(short = 'n', long, value_name = "print header interval (rows)", default_value = "30")]
+    #[arg(
+        short = 'n',
+        long,
+        value_name = "print header interval (rows)",
+        default_value = "30"
+    )]
     pub header_print: u64,
     /// History size
-    #[arg(short = 's', long, value_name = "nr statistics", default_value = "10800")]
+    #[arg(
+        short = 's',
+        long,
+        value_name = "nr statistics",
+        default_value = "10800"
+    )]
     pub history: usize,
     /// Read history (only read archives, no active fetching)
     #[arg(short = 'r', long, value_name = "read archives")]
     pub read: Option<String>,
-    /// Enable webserver 
+    /// Enable webserver
     #[arg(short = 'w', long, value_name = "enable webserver")]
     pub webserver: bool,
     /// Webserver port
-    #[arg(short = 'P', long, value_name = "webserver port", default_value = "1111")]
+    #[arg(
+        short = 'P',
+        long,
+        value_name = "webserver port",
+        default_value = "1111"
+    )]
     pub webserver_port: u64,
-    /// Enable archiver 
+    /// Enable archiver
     #[arg(short = 'A', long, value_name = "enable archiving")]
     pub archiver: bool,
     /// Deamon mode
     #[arg(short = 'D', long, value_name = "daemon mode")]
     pub deamon: bool,
     /// archiver interval minutes
-    #[arg(short = 'I', long, value_name = "archiver interval (minutes)", default_value = "10")]
+    #[arg(
+        short = 'I',
+        long,
+        value_name = "archiver interval (minutes)",
+        default_value = "10"
+    )]
     pub archiver_interval: i64,
     /// graph buffer width
-    #[arg(short = 'W', long, value_name = "graph buffer width", default_value = "1800")]
+    #[arg(
+        short = 'W',
+        long,
+        value_name = "graph buffer width",
+        default_value = "1800"
+    )]
     pub graph_width: u32,
     /// graph buffer heighth
-    #[arg(short = 'H', long, value_name = "graph buffer height", default_value = "1200")]
+    #[arg(
+        short = 'H',
+        long,
+        value_name = "graph buffer height",
+        default_value = "1200"
+    )]
     pub graph_height: u32,
 }
-static HISTORY: Lazy<HistoricalData> = Lazy::new(|| {
-    HistoricalData::new(Opts::parse().history)
-});
+static HISTORY: Lazy<HistoricalData> = Lazy::new(|| HistoricalData::new(Opts::parse().history));
 
-pub static ARGS: Lazy<Opts> = Lazy::new(|| { Opts::parse() });
-
+pub static ARGS: Lazy<Opts> = Lazy::new(Opts::parse);
