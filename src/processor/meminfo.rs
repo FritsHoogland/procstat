@@ -29,6 +29,7 @@ pub struct MemInfo {
     pub hugepages_free: f64,
     pub hugepages_reserved: f64,
     pub hugepagesize: f64,
+    pub hugetlb: f64,
     pub swaptotal: f64,
     pub swapfree: f64,
     pub sunreclaim: f64,
@@ -782,6 +783,15 @@ pub async fn add_memory_to_history(
             key3: "hugepagesize".to_string(),
         })?
         .last_value;
+    let hugetlb = statistics
+        .get(&("meminfo".to_string(), "".to_string(), "hugetlb".to_string()))
+        .ok_or(ProcessorError::UnableToFindKeyInHashMap {
+            hashmap: "statistics".to_string(),
+            key1: "meminfo".to_string(),
+            key2: "".to_string(),
+            key3: "hugetlb".to_string(),
+        })?
+        .last_value;
     let swaptotal = statistics
         .get(&(
             "meminfo".to_string(),
@@ -932,6 +942,7 @@ pub async fn add_memory_to_history(
         hugepages_free,
         hugepages_reserved,
         hugepagesize,
+        hugetlb,
         swaptotal,
         swapfree,
         sunreclaim,

@@ -200,7 +200,7 @@ pub fn memory_plot(
             historical_data_read.iter().map(|meminfo| {
                 (
                     meminfo.timestamp,
-                    ((meminfo.hugepages_total * meminfo.hugepagesize)
+                    (meminfo.hugetlb
                         + meminfo.memfree
                         + meminfo.cached
                         + meminfo.anonpages
@@ -229,6 +229,7 @@ pub fn memory_plot(
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREY_900.filled()));
     // hugepages_reserved
     // reserved hugepages are hugepages that are still counted as free
+    // therefore the area that it will draw is simply hugepages_free in total
     let min_hugepages_reserved = historical_data_read
         .iter()
         .map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize)
@@ -311,9 +312,9 @@ pub fn memory_plot(
             "hugepages free",
             min_hugepages_free / 1024_f64,
             max_hugepages_free / 1024_f64,
-            ((latest.map_or(0_f64, |latest| latest.hugepages_free)
+            (latest.map_or(0_f64, |latest| latest.hugepages_free)
                 - latest.map_or(0_f64, |latest| latest.hugepages_reserved))
-                * latest.map_or(0_f64, |latest| latest.hugepagesize))
+                * latest.map_or(0_f64, |latest| latest.hugepagesize)
                 / 1024_f64
         ))
         .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREY_300.filled()));
