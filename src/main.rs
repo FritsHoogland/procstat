@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::Local;
+#[allow(clippy::single_component_path_imports)]
 use env_logger;
 use log::info;
 use std::process;

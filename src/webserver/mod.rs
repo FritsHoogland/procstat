@@ -24,6 +24,7 @@ use crate::{ARGS, HISTORY};
 use axum::{extract::Path, response::Html, response::IntoResponse, routing::get, Router};
 use image::{DynamicImage, ImageOutputFormat};
 use log::info;
+use std::fmt::Write;
 use std::{collections::BTreeSet, io::Cursor, thread::sleep, time::Duration};
 
 use self::meminfo::create_memory_active_inactive_plot;
@@ -62,13 +63,14 @@ pub async fn root_handler() -> Html<String> {
         .into_iter()
         .collect::<Vec<_>>()
         .iter()
-        .map(|d| {
-            format!(
+        .fold(String::new(), |mut output, d| {
+            let _ = write!(
+                output,
                 r##"<li><a href="/handler/blockdevice/{}" target="right">Blockdevice {}</a>"##,
                 d, d
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     let html_for_blockdevices_psi = HISTORY.blockdevices
         .read()
@@ -79,8 +81,13 @@ pub async fn root_handler() -> Html<String> {
         .into_iter()
         .collect::<Vec<_>>()
         .iter()
-        .map(|d| format!(r##"<li><a href="/handler/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a>"##, d, d))
-        .collect::<String>();
+        .fold(String::new(), |mut output, d| {
+            let _ = write!(
+                output,
+                r##"<li><a href="/handler/blockdevice_psi/{}" target="right">Blockdevice-psi {}</a>"##, d, d
+            );
+            output
+        });
 
     let html_for_blockdevices_extra = HISTORY.blockdevices
         .read()
@@ -91,8 +98,12 @@ pub async fn root_handler() -> Html<String> {
         .into_iter()
         .collect::<Vec<_>>()
         .iter()
-        .map(|d| format!(r##"<li><a href="/handler/blockdevice_extra/{}" target="right">Blockdevice-extra {}</a>"##, d, d))
-        .collect::<String>();
+        .fold(String::new(), |mut output, d| {
+            let _ = write!(output,
+               r##"<li><a href="/handler/blockdevice_extra/{}" target="right">Blockdevice-extra {}</a>"##, d, d
+            );
+            output
+        });
 
     let html_for_networkdevices = HISTORY
         .networkdevices
@@ -104,13 +115,14 @@ pub async fn root_handler() -> Html<String> {
         .into_iter()
         .collect::<Vec<_>>()
         .iter()
-        .map(|d| {
-            format!(
+        .fold(String::new(), |mut output, d| {
+            let _ = write!(
+                output,
                 r##"<li><a href="/handler/networkdevice/{}" target="right">Networkdevice {}</a>"##,
                 d, d
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r##"<!doctype html>
