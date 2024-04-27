@@ -22,7 +22,8 @@ use crate::webserver::{
 };
 use crate::{ARGS, HISTORY};
 use axum::{extract::Path, response::Html, response::IntoResponse, routing::get, Router};
-use image::{DynamicImage, ImageOutputFormat};
+use image::{DynamicImage, ImageFormat};
+//use image::DynamicImage;
 use log::info;
 use std::fmt::Write;
 use std::{collections::BTreeSet, io::Cursor, thread::sleep, time::Duration};
@@ -200,8 +201,6 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         image::RgbImage::from_raw(ARGS.graph_width, ARGS.graph_height, buffer).unwrap(),
     );
     let mut cursor = Cursor::new(Vec::new());
-    rgb_image
-        .write_to(&mut cursor, ImageOutputFormat::Png)
-        .unwrap();
+    rgb_image.write_to(&mut cursor, ImageFormat::Png).unwrap();
     cursor.into_inner()
 }

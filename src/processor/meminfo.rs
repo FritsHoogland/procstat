@@ -890,7 +890,7 @@ pub async fn add_memory_to_history(
         .get(&(
             "meminfo".to_string(),
             "".to_string(),
-            "commited_as".to_string(),
+            "committed_as".to_string(),
         ))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap {
             hashmap: "statistics".to_string(),

@@ -1442,7 +1442,10 @@ fn committed_mem_plot(
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
-        .caption("Swap usage", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
+        .caption(
+            "Committed memory overview",
+            (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
+        )
         .build_cartesian_2d(start_time..end_time, low_value..high_value)
         .unwrap();
     contextarea
@@ -1524,7 +1527,7 @@ fn committed_mem_plot(
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.commitlimit)),
+                .map(|meminfo| (meminfo.timestamp, meminfo.commitlimit / 1024_f64)),
             ShapeStyle {
                 color: BLACK.into(),
                 filled: false,
