@@ -141,9 +141,7 @@ pub async fn read_proc_data_and_process(
     let proc_vmstat = read_vmstat_proc_data()
         .await
         .with_context(|| "proc vmstat reader")?;
-    let proc_xfs = read_xfs_proc_data()
-        .await
-        .with_context(|| "proc xfs reader")?;
+    let proc_xfs = read_xfs_proc_data().await;
     let proc_data = ProcData {
         timestamp,
         stat: proc_stat,

@@ -1,7 +1,7 @@
 #![allow(unused_assignments)]
-use crate::processor::{single_statistic_option_u64, single_statistic_u64, ProcData, Statistic};
+use crate::add_list_of_option_u64_data_to_statistics;
+use crate::processor::{single_statistic_option_u64, ProcData, Statistic};
 use crate::HISTORY;
-use crate::{add_list_of_option_u64_data_to_statistics, add_list_of_u64_data_to_statistics};
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use log::debug;
@@ -20,26 +20,16 @@ pub struct XfsInfo {
     pub xs_read_bytes: f64,
 }
 
-pub async fn read_xfs_proc_data() -> Result<ProcFsXfsStat> {
-    let proc_xfs_stats = proc_sys_parser::fs_xfs_stat::read()?;
+pub async fn read_xfs_proc_data() -> ProcFsXfsStat {
+    let proc_xfs_stats = proc_sys_parser::fs_xfs_stat::read();
     debug!("{:?}", proc_xfs_stats);
-    Ok(proc_xfs_stats)
+    proc_xfs_stats
 }
 
 pub async fn process_xfs_data(
     proc_data: &ProcData,
     statistics: &mut HashMap<(String, String, String), Statistic>,
 ) -> Result<()> {
-    add_list_of_u64_data_to_statistics!(
-        xfs,
-        "",
-        proc_data.timestamp,
-        proc_data,
-        xfs,
-        statistics,
-        xs_write_calls,
-        xs_read_calls
-    );
     add_list_of_option_u64_data_to_statistics!(
         xfs,
         "",
@@ -47,6 +37,8 @@ pub async fn process_xfs_data(
         proc_data,
         xfs,
         statistics,
+        xs_write_calls,
+        xs_read_calls,
         xs_write_bytes,
         xs_read_bytes
     );
