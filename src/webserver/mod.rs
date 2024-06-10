@@ -5,6 +5,7 @@ pub mod net_dev;
 pub mod pressure;
 pub mod stat;
 pub mod vmstat;
+pub mod xfs;
 
 use crate::webserver::meminfo::{
     create_memory_plot, create_memory_psi_plot, create_memory_swap_inout_plot,
@@ -27,6 +28,7 @@ use image::{DynamicImage, ImageFormat};
 use log::info;
 use std::fmt::Write;
 use std::{collections::BTreeSet, io::Cursor, thread::sleep, time::Duration};
+use xfs::create_xfs_plot;
 
 use self::meminfo::create_memory_active_inactive_plot;
 
@@ -151,6 +153,7 @@ pub async fn root_handler() -> Html<String> {
      <li><a href="/handler/memory_swap/x" target="right">Memory-swapspace</a></li>
      <li><a href="/handler/memory_swap_inout/x" target="right">Memory-swapspace-swapio</a></li>
      <li><a href="/handler/memory_act_inact/x" target="right">Memory-active-inactive</a></li>
+     <li><a href="/handler/xfs/x" target="right">Filesystem-XFS</a></li>
      {html_for_blockdevices}
      {html_for_blockdevices_psi}
      {html_for_blockdevices_extra}
@@ -195,6 +198,7 @@ pub async fn handler_plotter(Path((plot_1, plot_2)): Path<(String, String)>) -> 
         "memory_swap" => create_memory_swap_plot(&mut buffer),
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer),
         "memory_act_inact" => create_memory_active_inactive_plot(&mut buffer),
+        "xfs" => create_xfs_plot(&mut buffer),
         &_ => todo!(),
     }
     let rgb_image = DynamicImage::ImageRgb8(

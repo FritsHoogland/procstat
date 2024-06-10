@@ -69,7 +69,7 @@ pub async fn add_xfs_to_history(
         .get(&(
             "xfs".to_string(),
             "".to_string(),
-            "xs_write_calls ".to_string(),
+            "xs_write_calls".to_string(),
         ))
         .ok_or(ProcessorError::UnableToFindKeyInHashMap {
             hashmap: "statistics".to_string(),
@@ -130,6 +130,11 @@ pub async fn add_xfs_to_history(
             key3: "xs_read_bytes".to_string(),
         })?
         .per_second_value;
+    /* println!(
+            "insert into history {} - {}, {}, {}, {}",
+            timestamp, xs_write_calls, xs_read_calls, xs_write_bytes, xs_read_bytes
+        );
+    */
     HISTORY.xfs.write().unwrap().push_back(XfsInfo {
         timestamp,
         xs_write_calls,
@@ -137,6 +142,7 @@ pub async fn add_xfs_to_history(
         xs_write_bytes,
         xs_read_bytes,
     });
+    println!("{:#?}", HISTORY.xfs.read().unwrap());
 
     Ok(())
 }

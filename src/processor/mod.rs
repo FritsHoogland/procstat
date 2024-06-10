@@ -196,6 +196,7 @@ pub async fn process_data(
     process_xfs_data(&proc_data, statistics)
         .await
         .with_context(|| "Proc xfs processor")?;
+
     Ok(())
 }
 

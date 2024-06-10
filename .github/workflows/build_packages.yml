@@ -2,8 +2,8 @@ name: build_rpm_deb
 
 on:
   push:
-    paths:
-      - 'Cargo.toml'
+    tags:
+      - "v*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,13 +12,13 @@ jobs:
   recreate_latest_release:
     runs-on: ubuntu-latest
     steps:
-    - name: (re)create latest release
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        prerelease: true
-        title: "Development Build"
+      - name: (re)create latest release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
 
   build_intel_rpm:
     if: true
@@ -33,65 +33,64 @@ jobs:
       image: ${{ matrix.container }}
     needs: recreate_latest_release
     steps:
-   
-    - if: ${{ matrix.container == 'centos:7' }}
-      uses: actions/checkout@v3
-    - if: ${{ matrix.container != 'centos:7' }}
-      uses: actions/checkout@v4
+      - if: ${{ matrix.container == 'centos:7' }}
+        uses: actions/checkout@v3
+      - if: ${{ matrix.container != 'centos:7' }}
+        uses: actions/checkout@v4
 
-    - name: add operating system packages
-      run: yum update -y && yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
-    
-    - name: install rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-     
-    - name: cargo build --release
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
+      - name: add operating system packages
+        run: yum update -y && yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
 
-    - name: strip executable
-      run: strip -s target/release/procstat
+      - name: install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - if: ${{ matrix.container == 'centos:7' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-generate-rpm --version 0.11.0 --force
+      - name: cargo build --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
-    - if: ${{ matrix.container != 'centos:7' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-generate-rpm
+      - name: strip executable
+        run: strip -s target/release/procstat
 
-    - if: ${{ matrix.container == 'centos:7' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: generate-rpm
-        args: --payload-compress=gzip -s 'release = "el.7"'
+      - if: ${{ matrix.container == 'centos:7' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate-rpm --version 0.11.0 --force
 
-    - if: ${{ matrix.container == 'rockylinux:8' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: generate-rpm
-        args: -s 'release = "el.8"'
+      - if: ${{ matrix.container != 'centos:7' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate-rpm
 
-    - if: ${{ matrix.container == 'rockylinux:9' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: generate-rpm
-        args: -s 'release = "el.9"'
+      - if: ${{ matrix.container == 'centos:7' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-rpm
+          args: --payload-compress=gzip -s 'release = "el.7"'
 
-    - name: upload rpm to release
-      uses: "AButler/upload-release-assets@v2.0"
-      with:
-        files: 'target/generate-rpm/*rpm'
-        repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        release-tag: "latest"
+      - if: ${{ matrix.container == 'rockylinux:8' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-rpm
+          args: -s 'release = "el.8"'
+
+      - if: ${{ matrix.container == 'rockylinux:9' }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-rpm
+          args: -s 'release = "el.9"'
+
+      - name: upload rpm to release
+        uses: "AButler/upload-release-assets@v2.0"
+        with:
+          files: "target/generate-rpm/*rpm"
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          release-tag: "latest"
 
   build_intel_deb:
     if: true
@@ -105,47 +104,46 @@ jobs:
       image: ${{ matrix.container }}
     needs: recreate_latest_release
     steps:
-   
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: add operating system packages
-      run: ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get update && apt-get install -y curl gcc libssl-dev pkg-config libfreetype6-dev libfontconfig1-dev dpkg-dev
-    
-    - name: install rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-     
-    - name: cargo build --release
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
+      - name: add operating system packages
+        run: ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get update && apt-get install -y curl gcc libssl-dev pkg-config libfreetype6-dev libfontconfig1-dev dpkg-dev
 
-    - name: strip executable
-      run: strip -s target/release/procstat
+      - name: install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-deb
+      - name: cargo build --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
-    - uses: actions-rs/cargo@v1
-      with:
-        command: deb
+      - name: strip executable
+        run: strip -s target/release/procstat
 
-    - if: ${{ matrix.container == 'ubuntu:20.04' }}
-      run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.20.04.1_\2/')
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-deb
 
-    - if: ${{ matrix.container == 'ubuntu:22.04' }}
-      run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
+      - uses: actions-rs/cargo@v1
+        with:
+          command: deb
 
-    - name: upload deb to release
-      uses: "AButler/upload-release-assets@v2.0"
-      with:
-        files: 'target/debian/*deb'
-        repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        release-tag: "latest"
+      - if: ${{ matrix.container == 'ubuntu:20.04' }}
+        run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.20.04.1_\2/')
+
+      - if: ${{ matrix.container == 'ubuntu:22.04' }}
+        run: FILE=$(ls target/debian/procstat*deb); mv $FILE $(echo $FILE | sed 's/\(.*\)_\(amd64.deb\)/\1_0ubuntu1.22.04.1_\2/')
+
+      - name: upload deb to release
+        uses: "AButler/upload-release-assets@v2.0"
+        with:
+          files: "target/debian/*deb"
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          release-tag: "latest"
 
   build_macos_latest:
     if: true
@@ -158,34 +156,33 @@ jobs:
           - aarch64-apple-darwin
 
     steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
+      - name: install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
 
-    - name: install rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
+      - name: cargo build --release
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target=${{ matrix.target }}
 
-    - name: cargo build --release
-      uses: actions-rs/cargo@v1
-      with:
-        use-cross: true
-        command: build
-        args: --release --target=${{ matrix.target }}
-   
-    - name: obtain current app version
-      run: echo "CARGO_APP_VERSION=$(grep ^version Cargo.toml | sed 's/.*"\(.*\)"/\1/')" >> $GITHUB_ENV    
+      - name: obtain current app version
+        run: echo "CARGO_APP_VERSION=$(grep ^version Cargo.toml | sed 's/.*"\(.*\)"/\1/')" >> $GITHUB_ENV
 
-    - name: strip and tar up executable
-      run: |
-        strip -S target/${{ matrix.target}}/release/procstat
-        tar czvf procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz -C target/${{ matrix.target }}/release procstat
+      - name: strip and tar up executable
+        run: |
+          strip -S target/${{ matrix.target}}/release/procstat
+          tar czvf procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz -C target/${{ matrix.target }}/release procstat
 
-    - name: upload tarball to release
-      uses: "AButler/upload-release-assets@v2.0"
-      with:
-        files: procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz
-        repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        release-tag: "latest"
+      - name: upload tarball to release
+        uses: "AButler/upload-release-assets@v2.0"
+        with:
+          files: procstat-${{ matrix.target }}-${{ env.CARGO_APP_VERSION }}-1.tar.gz
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          release-tag: "latest"
