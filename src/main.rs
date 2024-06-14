@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
             // it is likely to archive data that is archived before.
             // the reader function does not complain about reading already read
             // rows.
-            match archive(Local::now()) {
+            match archive(Local::now(), false) {
                 Ok(_) => {}
                 Err(error) => {
                     return_value = 1;

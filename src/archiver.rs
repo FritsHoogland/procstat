@@ -33,17 +33,19 @@ pub async fn archiver() -> Result<()> {
     // once trunced, the interval is added, setting it to a time in the future, hence "high time".
     let mut high_time = Local::now().duration_trunc(Duration::minutes(ARGS.archiver_interval))?
         + Duration::minutes(ARGS.archiver_interval);
+
     debug!(
-        "begin: high_time: {:?}, current_time: {:?}",
-        high_time,
-        Local::now()
+        "begin: current_time: {:?}, high_time: {:?}",
+        Local::now(),
+        high_time
     );
+
     loop {
         interval.tick().await;
 
         debug!("archiver tick");
         if Local::now() > high_time {
-            match archive(high_time) {
+            match archive(high_time, true) {
                 Ok(_) => {}
                 Err(error) => {
                     // if the archiver returns an error, return to the caller of the archiver
@@ -61,13 +63,21 @@ pub async fn archiver() -> Result<()> {
         };
     }
 }
-pub fn archive(high_time: DateTime<Local>) -> Result<()> {
+pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<()> {
     let mut transition = HistoricalDataTransit::default();
     // this function gets the "end" time of the data to archive,
     // so subtracting the interval will result in the begin time for the archive.
-    let low_time = high_time.duration_trunc(Duration::minutes(ARGS.archiver_interval))?;
+    //let low_time = high_time.duration_trunc(Duration::minutes(ARGS.archiver_interval))?
+    //-Duration::minutes(ARGS.archiver_interval);
+    let low_time = if interval_completed {
+        (high_time - Duration::minutes(ARGS.archiver_interval))
+            .duration_trunc(Duration::minutes(ARGS.archiver_interval))?
+    } else {
+        high_time.duration_trunc(Duration::minutes(ARGS.archiver_interval))?
+    };
+
     debug!(
-        "archive times: low: {:?}, high {:?}, interval: {:?}",
+        "archive times: low: {:?}, high {:?}, interval: {:?} minutes.",
         low_time, high_time, ARGS.archiver_interval
     );
 
