@@ -1,6 +1,6 @@
 [package]
 name = "procstat"
-version = "0.1.27"
+version = "0.1.28"
 edition = "2021"
 license = "apache-2.0"
 description = "A utility to show and extract runtime statistics from a linux system."
