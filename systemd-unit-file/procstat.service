@@ -1,0 +1,24 @@
+# place as /etc/systemd/system/procstat.service
+[Unit]
+Description=Procstat: linux proc data gatherer.
+# allow restart 5 times
+StartLimitIntervalSec=1d
+StartLimitBurst=5
+
+[Service]
+Type=simple
+#User=procstat
+#Group=procstat
+
+Restart=on-failure
+RestartSec=5
+
+WorkingDirectory=/glide/procstat
+# -D = daemon mode, outputs as little as possible.
+# -A = enable archiver: archives gathered data into the working directory
+#      !! procstat does not cleanup !!
+ExecStart=/usr/local/bin/procstat -D -A
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
