@@ -2,6 +2,9 @@
 
 A systemd unit file is the startup and shutdown script for systemd managed servers.
 
+Do carefully inspect the unit file, and only proceed if you understand the settings.
+The most prominent setting is the working directory (WorkingDirectory), which is where procstat will generate its archives.
+
 # Installation
 
 1. Copy the unit/service file to `/etc/systemd/system/`.
