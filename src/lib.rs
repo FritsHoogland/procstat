@@ -93,8 +93,8 @@ pub struct Opts {
     )]
     pub history: usize,
     /// Read history (only read archives, no active fetching)
-    #[arg(short = 'r', long, value_name = "read archives")]
-    pub read: Option<String>,
+    #[arg(short = 'r', long, value_name = "read archives", num_args(1..))]
+    pub read: Option<Vec<String>>,
     /// Enable webserver
     #[arg(short = 'w', long, value_name = "enable webserver")]
     pub webserver: bool,

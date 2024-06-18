@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
     // reader function.
     // execution loops in the reader if called.
     if ARGS.read.is_some() {
-        reader(ARGS.read.as_ref().unwrap().to_string()).await;
+        reader().await;
     }
 
     // run the fetching and CLI output.

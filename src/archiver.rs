@@ -172,11 +172,11 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
     Ok(())
 }
 
-pub async fn reader(filenames: String) {
-    filenames.split(',').for_each(|file| {
+pub async fn reader() {
+    for file in ARGS.read.clone().unwrap() {
         if Path::new(&file).exists() {
             let transition: HistoricalDataTransit =
-                serde_json::from_str(&std::fs::read_to_string(file).unwrap())
+                serde_json::from_str(&std::fs::read_to_string(file.clone()).unwrap())
                     .unwrap_or_else(|e| panic!("{}", e));
             transition.cpu.iter().for_each(|row| {
                 HISTORY
@@ -246,7 +246,7 @@ pub async fn reader(filenames: String) {
         } else {
             println!("✘ {}", file);
         };
-    });
+    }
     println!("All files loaded.");
 
     // this sets up an endless loop that ticks with the set interval.
