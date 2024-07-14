@@ -9,9 +9,9 @@ use plotters::prelude::*;
 //use plotters::style::full_palette::{GREY_500, GREY_A100};
 
 use crate::{
-    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABELS_STYLE_FONT,
-    LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT,
-    MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE,
+    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
+    LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
+    MESH_STYLE_FONT_SIZE,
 };
 
 pub fn create_xfs_plot(buffer: &mut [u8]) {
@@ -26,7 +26,7 @@ pub fn xfs_iops_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.xfs.read().unwrap();
+    let historical_data_read = DATA.xfs.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|r| r.timestamp)
@@ -56,7 +56,7 @@ pub fn xfs_iops_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("IOPS")
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
@@ -173,7 +173,7 @@ pub fn xfs_mbps_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.xfs.read().unwrap();
+    let historical_data_read = DATA.xfs.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|r| r.timestamp)
@@ -203,7 +203,7 @@ pub fn xfs_mbps_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("MBPS")
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))

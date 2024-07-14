@@ -15,7 +15,7 @@ use crate::processor::stat::CpuStat;
 use crate::processor::vmstat::VmStatInfo;
 use crate::processor::xfs::XfsInfo;
 use crate::processor::HistoricalDataTransit;
-use crate::{ARGS, HISTORY};
+use crate::{ARGS, DATA};
 
 pub async fn archiver() -> Result<()> {
     // regardless of the archiver_interval set, the archiver will tick once per minute.
@@ -81,7 +81,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         low_time, high_time, ARGS.archiver_interval
     );
 
-    transition.cpu = HISTORY
+    transition.cpu = DATA
         .cpu
         .read()
         .unwrap()
@@ -89,7 +89,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         .filter(|cpustat| cpustat.timestamp > low_time && cpustat.timestamp <= high_time)
         .cloned()
         .collect::<Vec<CpuStat>>();
-    transition.memory = HISTORY
+    transition.memory = DATA
         .memory
         .read()
         .unwrap()
@@ -97,7 +97,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         .filter(|memory| memory.timestamp > low_time && memory.timestamp <= high_time)
         .cloned()
         .collect::<Vec<MemInfo>>();
-    transition.blockdevices = HISTORY
+    transition.blockdevices = DATA
         .blockdevices
         .read()
         .unwrap()
@@ -107,7 +107,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         })
         .cloned()
         .collect::<Vec<BlockDeviceInfo>>();
-    transition.networkdevices = HISTORY
+    transition.networkdevices = DATA
         .networkdevices
         .read()
         .unwrap()
@@ -117,7 +117,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         })
         .cloned()
         .collect::<Vec<NetworkDeviceInfo>>();
-    transition.loadavg = HISTORY
+    transition.loadavg = DATA
         .loadavg
         .read()
         .unwrap()
@@ -125,7 +125,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         .filter(|loadavg| loadavg.timestamp > low_time && loadavg.timestamp <= high_time)
         .cloned()
         .collect::<Vec<LoadavgInfo>>();
-    transition.pressure = HISTORY
+    transition.pressure = DATA
         .pressure
         .read()
         .unwrap()
@@ -133,7 +133,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         .filter(|pressure| pressure.timestamp > low_time && pressure.timestamp <= high_time)
         .cloned()
         .collect::<Vec<PressureInfo>>();
-    transition.vmstat = HISTORY
+    transition.vmstat = DATA
         .vmstat
         .read()
         .unwrap()
@@ -141,7 +141,7 @@ pub fn archive(high_time: DateTime<Local>, interval_completed: bool) -> Result<(
         .filter(|vmstat| vmstat.timestamp > low_time && vmstat.timestamp <= high_time)
         .cloned()
         .collect::<Vec<VmStatInfo>>();
-    transition.xfs = HISTORY
+    transition.xfs = DATA
         .xfs
         .read()
         .unwrap()
@@ -178,70 +178,38 @@ pub async fn reader() {
             let transition: HistoricalDataTransit =
                 serde_json::from_str(&std::fs::read_to_string(file.clone()).unwrap())
                     .unwrap_or_else(|e| panic!("{}", e));
-            transition.cpu.iter().for_each(|row| {
-                HISTORY
-                    .cpu
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.memory.iter().for_each(|row| {
-                HISTORY
-                    .memory
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.blockdevices.iter().for_each(|row| {
-                HISTORY
-                    .blockdevices
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.networkdevices.iter().for_each(|row| {
-                HISTORY
-                    .networkdevices
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.loadavg.iter().for_each(|row| {
-                HISTORY
-                    .loadavg
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.pressure.iter().for_each(|row| {
-                HISTORY
-                    .pressure
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.vmstat.iter().for_each(|row| {
-                HISTORY
-                    .vmstat
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
-            transition.xfs.iter().for_each(|row| {
-                HISTORY
-                    .xfs
-                    .write()
-                    .unwrap()
-                    .push_back(row.clone())
-                    .unwrap_or_default();
-            });
+            transition
+                .cpu
+                .iter()
+                .for_each(|row| DATA.cpu.write().unwrap().push_back(row.clone()));
+            transition
+                .memory
+                .iter()
+                .for_each(|row| DATA.memory.write().unwrap().push_back(row.clone()));
+            transition
+                .blockdevices
+                .iter()
+                .for_each(|row| DATA.blockdevices.write().unwrap().push_back(row.clone()));
+            transition
+                .networkdevices
+                .iter()
+                .for_each(|row| DATA.networkdevices.write().unwrap().push_back(row.clone()));
+            transition
+                .loadavg
+                .iter()
+                .for_each(|row| DATA.loadavg.write().unwrap().push_back(row.clone()));
+            transition
+                .pressure
+                .iter()
+                .for_each(|row| DATA.pressure.write().unwrap().push_back(row.clone()));
+            transition
+                .vmstat
+                .iter()
+                .for_each(|row| DATA.vmstat.write().unwrap().push_back(row.clone()));
+            transition
+                .xfs
+                .iter()
+                .for_each(|row| DATA.xfs.write().unwrap().push_back(row.clone()));
             println!("✔ {}", &file);
         } else {
             println!("✘ {}", file);

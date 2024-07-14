@@ -21,7 +21,7 @@ use crate::webserver::{
     },
     meminfo::create_memory_commit,
 };
-use crate::{ARGS, HISTORY};
+use crate::{ARGS, DATA};
 use axum::{extract::Path, response::Html, response::IntoResponse, routing::get, Router};
 use image::{DynamicImage, ImageFormat};
 //use image::DynamicImage;
@@ -48,7 +48,7 @@ pub async fn webserver() {
 pub async fn root_handler() -> Html<String> {
     // await blockdevices to appear to be able to make a list of them
     loop {
-        if HISTORY.blockdevices.read().unwrap().iter().count() > 0 {
+        if DATA.blockdevices.read().unwrap().iter().count() > 0 {
             break;
         } else {
             info!("Waiting for blockdevices to become available...");
@@ -56,7 +56,7 @@ pub async fn root_handler() -> Html<String> {
         }
     }
 
-    let html_for_blockdevices = HISTORY
+    let html_for_blockdevices = DATA
         .blockdevices
         .read()
         .unwrap()
@@ -75,7 +75,7 @@ pub async fn root_handler() -> Html<String> {
             output
         });
 
-    let html_for_blockdevices_psi = HISTORY.blockdevices
+    let html_for_blockdevices_psi = DATA.blockdevices
         .read()
         .unwrap()
         .iter()
@@ -92,7 +92,7 @@ pub async fn root_handler() -> Html<String> {
             output
         });
 
-    let html_for_blockdevices_extra = HISTORY.blockdevices
+    let html_for_blockdevices_extra = DATA.blockdevices
         .read()
         .unwrap()
         .iter()
@@ -108,7 +108,7 @@ pub async fn root_handler() -> Html<String> {
             output
         });
 
-    let html_for_networkdevices = HISTORY
+    let html_for_networkdevices = DATA
         .networkdevices
         .read()
         .unwrap()

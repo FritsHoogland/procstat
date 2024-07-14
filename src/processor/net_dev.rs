@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
 //
 use crate::processor::{single_statistic_u64, ProcData, Statistic};
-use crate::HISTORY;
+use crate::Data;
+use crate::ARGS;
+use crate::DATA;
 
 use super::ProcessorError;
 
@@ -347,8 +349,7 @@ pub async fn add_networkdevices_to_history(
             .per_second_value;
         totals[15] += transmit_compressed;
 
-        HISTORY
-            .networkdevices
+        DATA.networkdevices
             .write()
             .unwrap()
             .push_back(NetworkDeviceInfo {
@@ -372,32 +373,66 @@ pub async fn add_networkdevices_to_history(
                 transmit_compressed,
             });
     }
-    HISTORY
-        .networkdevices
-        .write()
-        .unwrap()
-        .push_back(NetworkDeviceInfo {
-            timestamp,
-            device_name: "TOTAL".to_string(),
-            receive_bytes: totals[0],
-            receive_packets: totals[1],
-            receive_errors: totals[2],
-            receive_drop: totals[3],
-            receive_fifo: totals[4],
-            receive_frame: totals[5],
-            receive_compressed: totals[6],
-            receive_multicast: totals[7],
-            transmit_bytes: totals[8],
-            transmit_packets: totals[9],
-            transmit_errors: totals[10],
-            transmit_drop: totals[11],
-            transmit_fifo: totals[12],
-            transmit_collisions: totals[13],
-            transmit_carrier: totals[14],
-            transmit_compressed: totals[15],
-        });
+    Data::push_networkdevices(NetworkDeviceInfo {
+        timestamp,
+        device_name: "TOTAL".to_string(),
+        receive_bytes: totals[0],
+        receive_packets: totals[1],
+        receive_errors: totals[2],
+        receive_drop: totals[3],
+        receive_fifo: totals[4],
+        receive_frame: totals[5],
+        receive_compressed: totals[6],
+        receive_multicast: totals[7],
+        transmit_bytes: totals[8],
+        transmit_packets: totals[9],
+        transmit_errors: totals[10],
+        transmit_drop: totals[11],
+        transmit_fifo: totals[12],
+        transmit_collisions: totals[13],
+        transmit_carrier: totals[14],
+        transmit_compressed: totals[15],
+    })
+    .await;
+    /*
+        DATA.networkdevices
+            .write()
+            .unwrap()
+            .push_back(NetworkDeviceInfo {
+                timestamp,
+                device_name: "TOTAL".to_string(),
+                receive_bytes: totals[0],
+                receive_packets: totals[1],
+                receive_errors: totals[2],
+                receive_drop: totals[3],
+                receive_fifo: totals[4],
+                receive_frame: totals[5],
+                receive_compressed: totals[6],
+                receive_multicast: totals[7],
+                transmit_bytes: totals[8],
+                transmit_packets: totals[9],
+                transmit_errors: totals[10],
+                transmit_drop: totals[11],
+                transmit_fifo: totals[12],
+                transmit_collisions: totals[13],
+                transmit_carrier: totals[14],
+                transmit_compressed: totals[15],
+            });
+    */
 
     Ok(())
+}
+
+impl Data {
+    pub async fn push_networkdevices(networkdeviceinfo: NetworkDeviceInfo) {
+        while DATA.networkdevices.read().unwrap().len() >= ARGS.history {
+            DATA.networkdevices.write().unwrap().pop_front();
+        }
+        DATA.networkdevices
+            .write()
+            .unwrap()
+            .push_back(networkdeviceinfo);
+    }
 }
 
 pub async fn print_net_dev(

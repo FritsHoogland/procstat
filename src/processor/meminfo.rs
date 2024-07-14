@@ -1,6 +1,8 @@
 use crate::add_list_of_u64_data_to_statistics;
 use crate::processor::{single_statistic_u64, ProcData, ProcessorError, Statistic};
-use crate::HISTORY;
+use crate::Data;
+use crate::ARGS;
+use crate::DATA;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use log::debug;
@@ -922,7 +924,7 @@ pub async fn add_memory_to_history(
             key3: "commitlimit".to_string(),
         })?
         .last_value;
-    HISTORY.memory.write().unwrap().push_back(MemInfo {
+    Data::push_memory(MemInfo {
         timestamp,
         memfree,
         memavailable,
@@ -953,7 +955,51 @@ pub async fn add_memory_to_history(
         inactive_file,
         committed_as,
         commitlimit,
-    });
+    })
+    .await;
+    /*
+        DATA.memory.write().unwrap().push_back(MemInfo {
+            timestamp,
+            memfree,
+            memavailable,
+            memtotal,
+            buffers,
+            cached,
+            swapcached,
+            kernelstack,
+            hardwarecorrupted,
+            slab,
+            pagetables,
+            dirty,
+            shmem,
+            mapped,
+            anonpages,
+            hugepages_total,
+            hugepages_free,
+            hugepages_reserved,
+            hugepagesize,
+            hugetlb,
+            swaptotal,
+            swapfree,
+            sunreclaim,
+            sreclaimable,
+            active_anon,
+            inactive_anon,
+            active_file,
+            inactive_file,
+            committed_as,
+            commitlimit,
+        });
+    */
 
     Ok(())
+}
+
+impl Data {
+    pub async fn push_memory(meminfo: MemInfo) {
+        while DATA.memory.read().unwrap().len() >= ARGS.history {
+            DATA.memory.write().unwrap().pop_front();
+        }
+        DATA.memory.write().unwrap().push_back(meminfo);
+    }
 }

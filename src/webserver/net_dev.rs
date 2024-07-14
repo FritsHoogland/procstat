@@ -2,9 +2,9 @@
 
 use crate::ARGS;
 use crate::{
-    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABELS_STYLE_FONT,
-    LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT,
-    MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE,
+    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
+    LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
+    MESH_STYLE_FONT_SIZE,
 };
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
@@ -26,7 +26,7 @@ fn networkdevice_mbit_plot(
     backend_number: usize,
     device_name: String,
 ) {
-    let historical_data_read = HISTORY.networkdevices.read().unwrap();
+    let historical_data_read = DATA.networkdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|networkdevices| networkdevices.device_name == device_name)
@@ -70,7 +70,7 @@ fn networkdevice_mbit_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("Megabit per second")
         .y_label_formatter(&|size| {
@@ -277,7 +277,7 @@ fn networkdevice_packet_plot(
     backend_number: usize,
     device_name: String,
 ) {
-    let historical_data_read = HISTORY.networkdevices.read().unwrap();
+    let historical_data_read = DATA.networkdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|networkdevices| networkdevices.device_name == device_name)
@@ -318,7 +318,7 @@ fn networkdevice_packet_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("Packets per second")
         .y_label_formatter(&|packets| format!("{:5.0}", packets))
@@ -509,7 +509,7 @@ fn networkdevice_error_plot(
         pub receive_fifo: f64,
         pub transmit_fifo: f64,
     }
-    let historical_data_read = HISTORY.networkdevices.read().unwrap();
+    let historical_data_read = DATA.networkdevices.read().unwrap();
 
     let start_time = historical_data_read
         .iter()
@@ -587,7 +587,7 @@ fn networkdevice_error_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("Errors per second")
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))

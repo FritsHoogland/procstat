@@ -3,9 +3,9 @@ use plotters::backend::{BitMapBackend, RGBPixel};
 use crate::webserver::pressure::pressure_io_plot;
 use crate::ARGS;
 use crate::{
-    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABELS_STYLE_FONT,
-    LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT,
-    MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE,
+    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
+    LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
+    MESH_STYLE_FONT_SIZE,
 };
 use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
@@ -56,7 +56,7 @@ fn blockdevice_mbps_plot(
     device_name: String,
 ) {
     multi_backend[backend_number].fill(&WHITE).unwrap();
-    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -97,7 +97,7 @@ fn blockdevice_mbps_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("MBPS")
         .y_label_formatter(&|mbps| {
@@ -288,7 +288,7 @@ fn blockdevice_iops_plot(
     multi_backend[backend_number].fill(&WHITE).unwrap();
     //
     // IOPS plot
-    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -332,7 +332,7 @@ fn blockdevice_iops_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("IOPS")
         .y_label_formatter(&|iops| {
@@ -563,7 +563,7 @@ fn blockdevice_latency_queuedepth_plot(
     multi_backend[backend_number].fill(&WHITE).unwrap();
     //
     // read, write and discard latency and queue depth plot
-    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -668,7 +668,7 @@ fn blockdevice_latency_queuedepth_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|latency| {
             if latency == &0_f64 {
@@ -1204,7 +1204,7 @@ fn blockdevice_iosize_plot(
     device_name: String,
 ) {
     multi_backend[backend_number].fill(&WHITE).unwrap();
-    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .filter(|blockdevices| blockdevices.device_name == device_name)
@@ -1271,7 +1271,7 @@ fn blockdevice_iosize_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| format!("{:5.0} kB", size))
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
@@ -1460,7 +1460,7 @@ fn blockdevice_extra(
     device_name: String,
 ) {
     multi_backend[backend_number].fill(&GREY_100).unwrap();
-    let historical_data_read = HISTORY.blockdevices.read().unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
     //
     // CAPTION_STYLE_FONT _SIZE 30
     // MESH_STYLE_FONT _SIZE    17

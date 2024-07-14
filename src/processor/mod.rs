@@ -31,12 +31,12 @@ use crate::processor::vmstat::{
 use crate::processor::xfs::{add_xfs_to_history, process_xfs_data, read_xfs_proc_data, XfsInfo};
 use crate::ARGS;
 use anyhow::{Context, Result};
-use bounded_vec_deque::BoundedVecDeque;
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use stat::CpuStat;
 use stat::{add_cpu_total_to_history, process_stat_data, read_stat_proc_data};
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::sync::RwLock;
 use thiserror::Error;
 
@@ -75,28 +75,28 @@ pub struct Statistic {
 }
 
 #[derive(Debug)]
-pub struct HistoricalData {
-    pub cpu: RwLock<BoundedVecDeque<CpuStat>>,
-    pub memory: RwLock<BoundedVecDeque<MemInfo>>,
-    pub blockdevices: RwLock<BoundedVecDeque<BlockDeviceInfo>>,
-    pub networkdevices: RwLock<BoundedVecDeque<NetworkDeviceInfo>>,
-    pub loadavg: RwLock<BoundedVecDeque<LoadavgInfo>>,
-    pub pressure: RwLock<BoundedVecDeque<PressureInfo>>,
-    pub vmstat: RwLock<BoundedVecDeque<VmStatInfo>>,
-    pub xfs: RwLock<BoundedVecDeque<XfsInfo>>,
+pub struct Data {
+    pub cpu: RwLock<VecDeque<CpuStat>>,
+    pub memory: RwLock<VecDeque<MemInfo>>,
+    pub blockdevices: RwLock<VecDeque<BlockDeviceInfo>>,
+    pub networkdevices: RwLock<VecDeque<NetworkDeviceInfo>>,
+    pub loadavg: RwLock<VecDeque<LoadavgInfo>>,
+    pub pressure: RwLock<VecDeque<PressureInfo>>,
+    pub vmstat: RwLock<VecDeque<VmStatInfo>>,
+    pub xfs: RwLock<VecDeque<XfsInfo>>,
 }
 
-impl HistoricalData {
-    pub fn new(history: usize) -> HistoricalData {
-        HistoricalData {
-            cpu: RwLock::new(BoundedVecDeque::new(history)),
-            memory: RwLock::new(BoundedVecDeque::new(history)),
-            blockdevices: RwLock::new(BoundedVecDeque::new(history)),
-            networkdevices: RwLock::new(BoundedVecDeque::new(history)),
-            loadavg: RwLock::new(BoundedVecDeque::new(history)),
-            pressure: RwLock::new(BoundedVecDeque::new(history)),
-            vmstat: RwLock::new(BoundedVecDeque::new(history)),
-            xfs: RwLock::new(BoundedVecDeque::new(history)),
+impl Data {
+    pub fn new(history: usize) -> Data {
+        Data {
+            cpu: RwLock::new(VecDeque::with_capacity(history)),
+            memory: RwLock::new(VecDeque::with_capacity(history)),
+            blockdevices: RwLock::new(VecDeque::with_capacity(history)),
+            networkdevices: RwLock::new(VecDeque::with_capacity(history)),
+            loadavg: RwLock::new(VecDeque::with_capacity(history)),
+            pressure: RwLock::new(VecDeque::with_capacity(history)),
+            vmstat: RwLock::new(VecDeque::with_capacity(history)),
+            xfs: RwLock::new(VecDeque::with_capacity(history)),
         }
     }
 }

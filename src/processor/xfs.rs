@@ -1,7 +1,9 @@
 #![allow(unused_assignments)]
 use crate::add_list_of_option_u64_data_to_statistics;
 use crate::processor::{single_statistic_option_u64, ProcData, Statistic};
-use crate::HISTORY;
+use crate::Data;
+use crate::ARGS;
+use crate::DATA;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use log::debug;
@@ -131,13 +133,33 @@ pub async fn add_xfs_to_history(
         })?
         .per_second_value;
 
-    HISTORY.xfs.write().unwrap().push_back(XfsInfo {
+    Data::push_xfs(XfsInfo {
         timestamp,
         xs_write_calls,
         xs_read_calls,
         xs_write_bytes,
         xs_read_bytes,
-    });
+    })
+    .await;
+
+    /*
+        DATA.xfs.write().unwrap().push_back(XfsInfo {
+            timestamp,
+            xs_write_calls,
+            xs_read_calls,
+            xs_write_bytes,
+            xs_read_bytes,
+        });
+    */
 
     Ok(())
+}
+
+impl Data {
+    pub async fn push_xfs(xfs: XfsInfo) {
+        while DATA.xfs.read().unwrap().len() >= ARGS.history {
+            DATA.xfs.write().unwrap().pop_front();
+        }
+        DATA.xfs.write().unwrap().push_back(xfs);
+    }
 }

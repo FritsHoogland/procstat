@@ -1,14 +1,15 @@
+use crate::processor::{
+    single_statistic_option_u64, single_statistic_u64, ProcData, ProcessorError, Statistic,
+};
+use crate::Data;
+use crate::ARGS;
+use crate::DATA;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use log::debug;
 use proc_sys_parser::block::SysBlock;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
-
-use crate::processor::{
-    single_statistic_option_u64, single_statistic_u64, ProcData, ProcessorError, Statistic,
-};
-use crate::HISTORY;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct BlockDeviceInfo {
@@ -650,8 +651,7 @@ pub async fn add_blockdevices_to_history(
             })?
             .last_value;
 
-        HISTORY
-            .blockdevices
+        DATA.blockdevices
             .write()
             .unwrap()
             .push_back(BlockDeviceInfo {
@@ -693,38 +693,73 @@ pub async fn add_blockdevices_to_history(
                 queue_discard_max_bytes,
             });
     }
-
-    HISTORY
-        .blockdevices
-        .write()
-        .unwrap()
-        .push_back(BlockDeviceInfo {
-            timestamp,
-            device_name: "TOTAL".to_string(),
-            reads_completed_success: totals[0],
-            reads_merged: totals[1],
-            reads_bytes: totals[2],
-            reads_time_spent_ms: totals[3],
-            writes_completed_success: totals[4],
-            writes_merged: totals[5],
-            writes_bytes: totals[6],
-            writes_time_spent_ms: totals[7],
-            ios_in_progress: totals[8],
-            ios_time_spent_ms: totals[9],
-            ios_weighted_time_spent_ms: totals[10],
-            discards_completed_success: totals[11],
-            discards_merged: totals[12],
-            discards_bytes: totals[13],
-            discards_time_spent_ms: totals[14],
-            flush_requests_completed_success: totals[15],
-            flush_requests_time_spent_ms: totals[16],
-            inflight_reads: totals[17],
-            inflight_writes: totals[18],
-            queue_nr_requests: totals[19],
-            ..Default::default()
-        });
+    Data::push_blockdevices(BlockDeviceInfo {
+        timestamp,
+        device_name: "TOTAL".to_string(),
+        reads_completed_success: totals[0],
+        reads_merged: totals[1],
+        reads_bytes: totals[2],
+        reads_time_spent_ms: totals[3],
+        writes_completed_success: totals[4],
+        writes_merged: totals[5],
+        writes_bytes: totals[6],
+        writes_time_spent_ms: totals[7],
+        ios_in_progress: totals[8],
+        ios_time_spent_ms: totals[9],
+        ios_weighted_time_spent_ms: totals[10],
+        discards_completed_success: totals[11],
+        discards_merged: totals[12],
+        discards_bytes: totals[13],
+        discards_time_spent_ms: totals[14],
+        flush_requests_completed_success: totals[15],
+        flush_requests_time_spent_ms: totals[16],
+        inflight_reads: totals[17],
+        inflight_writes: totals[18],
+        queue_nr_requests: totals[19],
+        ..Default::default()
+    })
+    .await;
+    /*
+        DATA.blockdevices
+            .write()
+            .unwrap()
+            .push_back(BlockDeviceInfo {
+                timestamp,
+                device_name: "TOTAL".to_string(),
+                reads_completed_success: totals[0],
+                reads_merged: totals[1],
+                reads_bytes: totals[2],
+                reads_time_spent_ms: totals[3],
+                writes_completed_success: totals[4],
+                writes_merged: totals[5],
+                writes_bytes: totals[6],
+                writes_time_spent_ms: totals[7],
+                ios_in_progress: totals[8],
+                ios_time_spent_ms: totals[9],
+                ios_weighted_time_spent_ms: totals[10],
+                discards_completed_success: totals[11],
+                discards_merged: totals[12],
+                discards_bytes: totals[13],
+                discards_time_spent_ms: totals[14],
+                flush_requests_completed_success: totals[15],
+                flush_requests_time_spent_ms: totals[16],
+                inflight_reads: totals[17],
+                inflight_writes: totals[18],
+                queue_nr_requests: totals[19],
+                ..Default::default()
+            });
+    */
 
     Ok(())
+}
+
+impl Data {
+    pub async fn push_blockdevices(blockdevice: BlockDeviceInfo) {
+        while DATA.blockdevices.read().unwrap().len() >= ARGS.history {
+            DATA.blockdevices.write().unwrap().pop_front();
+        }
+        DATA.blockdevices.write().unwrap().push_back(blockdevice);
+    }
 }
 
 pub async fn print_diskstats(

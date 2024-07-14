@@ -15,9 +15,9 @@ use crate::webserver::pressure::pressure_memory_plot;
 use crate::webserver::vmstat::swap_inout_plot;
 use crate::ARGS;
 use crate::{
-    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABELS_STYLE_FONT,
-    LABELS_STYLE_FONT_SIZE, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT,
-    MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE,
+    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
+    LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
+    MESH_STYLE_FONT_SIZE,
 };
 use sysctl::{Ctl, Sysctl};
 
@@ -72,7 +72,7 @@ pub fn memory_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.memory.read().unwrap();
+    let historical_data_read = DATA.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|meminfo| meminfo.timestamp)
@@ -111,7 +111,7 @@ pub fn memory_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
             if size < &1024_f64 {
@@ -833,7 +833,7 @@ fn swap_space_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.memory.read().unwrap();
+    let historical_data_read = DATA.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|meminfo| meminfo.timestamp)
@@ -864,7 +864,7 @@ fn swap_space_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
             if size < &1024_f64 {
@@ -972,7 +972,7 @@ fn active_inactive_mem_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.memory.read().unwrap();
+    let historical_data_read = DATA.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|meminfo| meminfo.timestamp)
@@ -1006,7 +1006,7 @@ fn active_inactive_mem_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
             if size < &1024_f64 {
@@ -1412,7 +1412,7 @@ fn committed_mem_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
 ) {
-    let historical_data_read = HISTORY.memory.read().unwrap();
+    let historical_data_read = DATA.memory.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|meminfo| meminfo.timestamp)
@@ -1452,7 +1452,7 @@ fn committed_mem_plot(
     contextarea
         .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_label_formatter(&|size| {
             if size < &1024_f64 {

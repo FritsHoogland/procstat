@@ -1,14 +1,17 @@
-
 use plotters::backend::{BitMapBackend, RGBPixel};
-use plotters::chart::{ChartBuilder, LabelAreaPosition};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
+use plotters::chart::{ChartBuilder, LabelAreaPosition};
 use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
-use plotters::style::full_palette::{GREY_A100, GREY_500};
+use plotters::style::full_palette::{GREY_500, GREY_A100};
 
-use crate::{CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, HISTORY, LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE, MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE};
+use crate::{
+    CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
+    LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
+    MESH_STYLE_FONT_SIZE,
+};
 
 #[derive(Debug, Default)]
 struct LowValue {
@@ -26,9 +29,8 @@ struct HighValue {
 pub fn load_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
-)
-{
-    let historical_data_read = HISTORY.loadavg.read().unwrap();
+) {
+    let historical_data_read = DATA.loadavg.read().unwrap();
     let start_time = historical_data_read
         .iter()
         .map(|loadavg| loadavg.timestamp)
@@ -58,10 +60,11 @@ pub fn load_plot(
         };
     }
     read_history_and_set_high_and_low_values!(load_1, load_5, load_15);
-    let high_value_all_load = high_value.load_1.max(high_value.load_5).max(high_value.load_15);
-    let latest = historical_data_read
-        .back()
-        .unwrap();
+    let high_value_all_load = high_value
+        .load_1
+        .max(high_value.load_5)
+        .max(high_value.load_15);
+    let latest = historical_data_read.back().unwrap();
 
     // create the plot
     multi_backend[backend_number].fill(&WHITE).unwrap();
@@ -72,18 +75,33 @@ pub fn load_plot(
         .caption("Load", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
         .build_cartesian_2d(start_time..end_time, 0_f64..high_value_all_load)
         .unwrap();
-    contextarea.configure_mesh()
+    contextarea
+        .configure_mesh()
         .x_labels(6)
-        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S").to_string())
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
         .x_desc("Time")
         .y_desc("Load")
         .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
         .draw()
         .unwrap();
     // This is a dummy plot for the sole intention to write a header in the legend.
-    contextarea.draw_series(LineSeries::new(historical_data_read.iter().take(1).map(|loadavg| (loadavg.timestamp, loadavg.load_1)), ShapeStyle { color: TRANSPARENT, filled: false, stroke_width: 1} ))
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .take(1)
+                .map(|loadavg| (loadavg.timestamp, loadavg.load_1)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
         .unwrap()
-        .label(format!("{:25} {:>10} {:>10} {:>10}", "", "min", "max", "last"));
+        .label(format!(
+            "{:25} {:>10} {:>10} {:>10}",
+            "", "min", "max", "last"
+        ));
     macro_rules! draw_lineseries {
         ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
@@ -96,7 +114,8 @@ pub fn load_plot(
     }
     draw_lineseries!([load_1, BLACK], [load_5, GREY_500], [load_15, GREY_A100]);
     // draw the legend
-    contextarea.configure_series_labels()
+    contextarea
+        .configure_series_labels()
         .border_style(BLACK)
         .background_style(WHITE.mix(0.7))
         .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))

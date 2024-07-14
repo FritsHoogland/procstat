@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 use once_cell::sync::Lazy;
-use processor::HistoricalData;
+use processor::Data;
 
 pub mod app;
 pub mod archiver;
@@ -137,6 +137,6 @@ pub struct Opts {
     )]
     pub graph_height: u32,
 }
-static HISTORY: Lazy<HistoricalData> = Lazy::new(|| HistoricalData::new(Opts::parse().history));
+static DATA: Lazy<Data> = Lazy::new(|| Data::new(Opts::parse().history));
 
 pub static ARGS: Lazy<Opts> = Lazy::new(Opts::parse);

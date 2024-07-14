@@ -13,23 +13,22 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.86"
 axum = "0.7.5"
-bounded-vec-deque = "0.1.1"
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.6", features = ["derive"] }
+clap = { version = "4.5.9", features = ["derive"] }
 ctrlc = "3.4.4"
 dhat = "0.3.3"
-env_logger = "0.11.0"
+env_logger = "0.11.3"
 futures = "0.3.30"
 image = "0.25.1"
-log = "0.4.21"
+log = "0.4.22"
 once_cell = "1.19.0"
 plotters = "0.3.6"
 proc_sys_parser = "0.1.22"
-serde = { version = "1.0.203", features = ["derive"] }
-serde_derive = "1.0.203"
-serde_json = "1.0.117"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_derive = "1.0.204"
+serde_json = "1.0.120"
 sysctl = "0.5.5"
-thiserror = "1.0.61"
+thiserror = "1.0.62"
 tokio = { version = "1.38.0", features = ["full"] }
 
 [package.metadata.generate-rpm]
