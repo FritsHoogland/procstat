@@ -3,6 +3,7 @@ use crate::{
     LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
     MESH_STYLE_FONT_SIZE,
 };
+use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
 use plotters::chart::{ChartBuilder, LabelAreaPosition};
@@ -72,18 +73,29 @@ struct HighValue {
 pub fn pressure_cpu_some_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.pressure.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|p| p.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|p| p.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
+
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -92,12 +104,14 @@ pub fn pressure_cpu_some_plot(
             $(
             low_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             )*
@@ -135,11 +149,14 @@ pub fn pressure_cpu_some_plot(
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
         .build_cartesian_2d(
-            start_time..end_time,
+            final_start_time..final_end_time,
             0_f64..(high_value.cpu_some_total * 1.1_f64),
         )
         .unwrap()
-        .set_secondary_coord(start_time..end_time, 0_f64..(high_value_all_avg * 1.1_f64));
+        .set_secondary_coord(
+            final_start_time..final_end_time,
+            0_f64..(high_value_all_avg * 1.1_f64),
+        );
     contextarea
         .configure_mesh()
         .x_labels(6)
@@ -183,7 +200,7 @@ pub fn pressure_cpu_some_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|loadavg| (loadavg.timestamp, loadavg.cpu_some_total)),
+                .map(|p| (p.timestamp, p.cpu_some_total)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -201,7 +218,8 @@ pub fn pressure_cpu_some_plot(
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|pressure| (pressure.timestamp, pressure.cpu_some_total / 1_000_000_f64)),
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| (p.timestamp, p.cpu_some_total / 1_000_000_f64)),
             0.0,
             BLUE_A100,
         ))
@@ -218,10 +236,18 @@ pub fn pressure_cpu_some_plot(
     macro_rules! draw_lineseries_on_secondary_axes {
         ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
-                    .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
+                contextarea.draw_secondary_series(
+                    LineSeries::new(
+                        historical_data_read
+                            .iter()
+                            .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                            .map(|p| (p.timestamp, p.$struct_field_name)),
+                        ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }
+                    )
+                )
+                .unwrap()
+                .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
+                .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
@@ -244,18 +270,28 @@ pub fn pressure_cpu_some_plot(
 pub fn pressure_memory_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.pressure.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|pressure| pressure.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|pressure| pressure.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -264,12 +300,14 @@ pub fn pressure_memory_plot(
             $(
             low_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             )*
@@ -317,11 +355,14 @@ pub fn pressure_memory_plot(
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
         .build_cartesian_2d(
-            start_time..end_time,
+            final_start_time..final_end_time,
             0_f64..(high_value_all_total * 1.1_f64),
         )
         .unwrap()
-        .set_secondary_coord(start_time..end_time, 0_f64..(high_value_all_avg * 1.1_f64));
+        .set_secondary_coord(
+            final_start_time..final_end_time,
+            0_f64..(high_value_all_avg * 1.1_f64),
+        );
     contextarea
         .configure_mesh()
         .x_labels(6)
@@ -365,7 +406,7 @@ pub fn pressure_memory_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|pressure| (pressure.timestamp, pressure.memory_some_total)),
+                .map(|p| (p.timestamp, p.memory_some_total)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -380,12 +421,10 @@ pub fn pressure_memory_plot(
     // some total
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|pressure| {
-                (
-                    pressure.timestamp,
-                    pressure.memory_some_total / 1_000_000_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| (p.timestamp, p.memory_some_total / 1_000_000_f64)),
             0.0,
             BLUE_A100,
         ))
@@ -402,10 +441,18 @@ pub fn pressure_memory_plot(
     macro_rules! draw_lineseries_on_secondary_axes {
         ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
-                    .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
+                contextarea.draw_secondary_series(
+                    LineSeries::new(
+                        historical_data_read
+                            .iter()
+                            .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                            .map(|p| (p.timestamp, p.$struct_field_name)),
+                        ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }
+                    )
+                )
+                .unwrap()
+                .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " secs %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
+                .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }
@@ -417,12 +464,10 @@ pub fn pressure_memory_plot(
     // full total
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|pressure| {
-                (
-                    pressure.timestamp,
-                    pressure.memory_full_total / 1_000_000_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| (p.timestamp, p.memory_full_total / 1_000_000_f64)),
             0.0,
             RED_A100,
         ))
@@ -455,18 +500,28 @@ pub fn pressure_memory_plot(
 pub fn pressure_io_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.pressure.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|pressure| pressure.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|p| p.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|pressure| pressure.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
 
@@ -475,12 +530,14 @@ pub fn pressure_io_plot(
             $(
             low_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| p.$struct_field_name)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             )*
@@ -526,11 +583,14 @@ pub fn pressure_io_plot(
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
         .build_cartesian_2d(
-            start_time..end_time,
+            final_start_time..final_end_time,
             0_f64..(high_value_all_total * 1.1_f64),
         )
         .unwrap()
-        .set_secondary_coord(start_time..end_time, 0_f64..(high_value_all_avg * 1.1_f64));
+        .set_secondary_coord(
+            final_start_time..final_end_time,
+            0_f64..(high_value_all_avg * 1.1_f64),
+        );
     contextarea
         .configure_mesh()
         .x_labels(6)
@@ -573,7 +633,7 @@ pub fn pressure_io_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|pressure| (pressure.timestamp, pressure.io_some_total)),
+                .map(|p| (p.timestamp, p.io_some_total)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -590,7 +650,8 @@ pub fn pressure_io_plot(
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|pressure| (pressure.timestamp, pressure.io_some_total / 1_000_000_f64)),
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| (p.timestamp, p.io_some_total / 1_000_000_f64)),
             0.0,
             BLUE_A100,
         ))
@@ -607,7 +668,16 @@ pub fn pressure_io_plot(
     macro_rules! draw_lineseries_on_secondary_axes {
         ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_secondary_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
+                contextarea
+                    .draw_secondary_series(
+                        LineSeries::new(
+                            historical_data_read
+                                .iter()
+                                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                                .map(|p| (p.timestamp, p.$struct_field_name)),
+                            ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }
+                        )
+                    )
                     .unwrap()
                     .label(format!("{:25} {:10.2} {:10.2} {:10.2}", concat!(stringify!($struct_field_name), " %"), low_value.$struct_field_name, high_value.$struct_field_name, latest.map_or(0_f64, |latest| latest.$struct_field_name)))
                     .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
@@ -624,7 +694,8 @@ pub fn pressure_io_plot(
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|pressure| (pressure.timestamp, pressure.io_full_total / 1_000_000_f64)),
+                .filter(|p| p.timestamp >= final_start_time && p.timestamp <= final_end_time)
+                .map(|p| (p.timestamp, p.io_full_total / 1_000_000_f64)),
             0.0,
             RED_A100,
         ))

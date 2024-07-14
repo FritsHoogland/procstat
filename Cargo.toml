@@ -30,6 +30,7 @@ serde_json = "1.0.120"
 sysctl = "0.5.5"
 thiserror = "1.0.62"
 tokio = { version = "1.38.0", features = ["full"] }
+axum_session = "0.14.0"
 
 [package.metadata.generate-rpm]
 assets = [

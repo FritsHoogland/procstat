@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
 use plotters::chart::{ChartBuilder, LabelAreaPosition};
@@ -29,31 +30,44 @@ struct HighValue {
 pub fn load_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.loadavg.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|loadavg| loadavg.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|l| l.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|l| l.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let mut low_value: LowValue = Default::default();
     let mut high_value: HighValue = Default::default();
+
     macro_rules! read_history_and_set_high_and_low_values {
         ($($struct_field_name:ident),*) => {
             $(
             low_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name)
+                .filter(|l| l.timestamp >= final_start_time && l.timestamp <= final_end_time)
+                .map(|l| l.$struct_field_name)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             high_value.$struct_field_name = historical_data_read
                 .iter()
-                .map(|pressure| pressure.$struct_field_name * 1.1_f64)
+                .filter(|l| l.timestamp >= final_start_time && l.timestamp <= final_end_time)
+                .map(|l| l.$struct_field_name * 1.1_f64)
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or_default();
             )*
@@ -73,7 +87,7 @@ pub fn load_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("Load", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, 0_f64..high_value_all_load)
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value_all_load)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -90,7 +104,7 @@ pub fn load_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|loadavg| (loadavg.timestamp, loadavg.load_1)),
+                .map(|l| (l.timestamp, l.load_1)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -105,10 +119,18 @@ pub fn load_plot(
     macro_rules! draw_lineseries {
         ($([$struct_field_name:ident, $color:expr]),*) => {
             $(
-                contextarea.draw_series(LineSeries::new(historical_data_read.iter().map(|pressure| (pressure.timestamp, pressure.$struct_field_name)), ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }))
-                    .unwrap()
-                    .label(format!("{:25} {:10.2} {:10.2} {:10.2}", stringify!($struct_field_name), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
-                    .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
+                contextarea.draw_series(
+                    LineSeries::new(
+                        historical_data_read
+                            .iter()
+                            .filter(|l| l.timestamp >= final_start_time && l.timestamp <= final_end_time)
+                            .map(|l| (l.timestamp, l.$struct_field_name)),
+                        ShapeStyle { color: $color.into(), filled: true, stroke_width: 2 }
+                    )
+                )
+                .unwrap()
+                .label(format!("{:25} {:10.2} {:10.2} {:10.2}", stringify!($struct_field_name), low_value.$struct_field_name, high_value.$struct_field_name, latest.$struct_field_name))
+                .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], $color.filled()));
             )*
         };
     }

@@ -6,6 +6,7 @@ use crate::{
     LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
     MESH_STYLE_FONT_SIZE,
 };
+use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::{ChartBuilder, LabelAreaPosition, SeriesLabelPosition::UpperLeft};
 use plotters::coord::Shift;
@@ -16,42 +17,61 @@ use plotters::style::full_palette::{
     BLUE_300, BLUE_900, LIGHTGREEN_300, LIGHTGREEN_900, ORANGE_300, ORANGE_900,
 };
 
-pub fn create_memory_alloc_plot(buffer: &mut [u8]) {
+pub fn create_memory_alloc_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    memory_plot(&mut multi_backend, 0);
-    pages_allocated_and_free(&mut multi_backend, 1)
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    pages_allocated_and_free(&mut multi_backend, 1, start_time, end_time)
 }
 
-pub fn create_memory_alloc_psi_plot(buffer: &mut [u8]) {
+pub fn create_memory_alloc_psi_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
-    memory_plot(&mut multi_backend, 0);
-    pages_allocated_and_free(&mut multi_backend, 1);
-    pressure_memory_plot(&mut multi_backend, 2);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    pages_allocated_and_free(&mut multi_backend, 1, start_time, end_time);
+    pressure_memory_plot(&mut multi_backend, 2, start_time, end_time);
 }
 
 pub fn swap_inout_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.vmstat.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|vmstat| vmstat.timestamp)
-        .min()
-        .unwrap();
-    let end_time = historical_data_read
-        .iter()
-        .map(|vmstat| vmstat.timestamp)
-        .max()
-        .unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .min()
+            .unwrap()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .max()
+            .unwrap()
+    };
     let latest = historical_data_read.back().unwrap();
     let high_value = historical_data_read
         .iter()
-        .map(|vmstat| (vmstat.pswpin + vmstat.pswpout) * 1.1_f64)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .map(|v| (v.pswpin + v.pswpout) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
 
@@ -62,7 +82,7 @@ pub fn swap_inout_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("Swap IO", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -79,7 +99,7 @@ pub fn swap_inout_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|vmstat| (vmstat.timestamp, vmstat.pswpin)),
+                .map(|v| (v.timestamp, v.pswpin)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -95,21 +115,24 @@ pub fn swap_inout_plot(
     //
     let min_total_swap = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpin + vmstat.pswpout > 0_f64)
-        .map(|vmstat| vmstat.pswpin + vmstat.pswpout)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpin + v.pswpout > 0_f64)
+        .map(|v| v.pswpin + v.pswpout)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_total_swap = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpin + vmstat.pswpout > 0_f64)
-        .map(|vmstat| vmstat.pswpin + vmstat.pswpout)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpin + v.pswpout > 0_f64)
+        .map(|v| v.pswpin + v.pswpout)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pswpin + vmstat.pswpout)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pswpin + v.pswpout)),
             BLACK,
         ))
         .unwrap()
@@ -124,22 +147,25 @@ pub fn swap_inout_plot(
     // pgspout
     let min_pswpout = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpout > 0_f64)
-        .map(|vmstat| vmstat.pswpout)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpout > 0_f64)
+        .map(|v| v.pswpout)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_pswpout = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpout > 0_f64)
-        .map(|vmstat| vmstat.pswpout)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpout > 0_f64)
+        .map(|v| v.pswpout)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|vmstat| vmstat.pswpout > 0_f64)
-                .map(|vmstat| Circle::new((vmstat.timestamp, vmstat.pswpout), 4, RED.filled())),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .filter(|v| v.pswpout > 0_f64)
+                .map(|v| Circle::new((v.timestamp, v.pswpout), 4, RED.filled())),
         )
         .unwrap()
         .label(format!(
@@ -150,22 +176,25 @@ pub fn swap_inout_plot(
     // pgspin
     let min_pswpin = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpin > 0_f64)
-        .map(|vmstat| vmstat.pswpin)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpin > 0_f64)
+        .map(|v| v.pswpin)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_pswpin = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pswpin > 0_f64)
-        .map(|vmstat| vmstat.pswpin)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pswpin > 0_f64)
+        .map(|v| v.pswpin)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|vmstat| vmstat.pswpin > 0_f64)
-                .map(|vmstat| Circle::new((vmstat.timestamp, vmstat.pswpin), 3, GREEN.filled())),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .filter(|v| v.pswpin > 0_f64)
+                .map(|v| Circle::new((v.timestamp, v.pswpin), 3, GREEN.filled())),
         )
         .unwrap()
         .label(format!(
@@ -187,39 +216,52 @@ pub fn swap_inout_plot(
 pub fn pages_allocated_and_free(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.vmstat.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|vmstat| vmstat.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|vmstat| vmstat.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let latest = historical_data_read.back();
     let high_value_free = historical_data_read
         .iter()
-        .map(|vmstat| vmstat.pgfree * 1.1_f64)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .map(|v| v.pgfree * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let high_value_alloc = historical_data_read
         .iter()
-        .map(|vmstat| {
-            (vmstat.pgalloc_dma
-                + vmstat.pgalloc_dma32
-                + vmstat.pgalloc_normal
-                + vmstat.pgalloc_device
-                + vmstat.pgalloc_movable)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .map(|v| {
+            (v.pgalloc_dma
+                + v.pgalloc_dma32
+                + v.pgalloc_normal
+                + v.pgalloc_device
+                + v.pgalloc_movable)
                 * 1.1_f64
         })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let high_value_fault = historical_data_read
         .iter()
-        .map(|vmstat| vmstat.pgfault_delta * 1.1_f64)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .map(|v| v.pgfault_delta * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let high_value = high_value_free.max(high_value_alloc).max(high_value_fault);
@@ -234,7 +276,7 @@ pub fn pages_allocated_and_free(
             "Pages allocated and freed",
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
-        .build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -264,7 +306,7 @@ pub fn pages_allocated_and_free(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgfree)),
+                .map(|v| (v.timestamp, v.pgfree)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -280,21 +322,24 @@ pub fn pages_allocated_and_free(
     // pgfree
     let min_free = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgfree > 0_f64)
-        .map(|vmstat| vmstat.pgfree)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgfree > 0_f64)
+        .map(|v| v.pgfree)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_free = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgfree > 0_f64)
-        .map(|vmstat| vmstat.pgfree)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgfree > 0_f64)
+        .map(|v| v.pgfree)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgfree)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgfree)),
             ShapeStyle {
                 color: GREEN.into(),
                 filled: true,
@@ -313,21 +358,24 @@ pub fn pages_allocated_and_free(
     // pgfault (_delta)
     let min_free = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgfault_delta > 0_f64)
-        .map(|vmstat| vmstat.pgfault_delta)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgfault_delta > 0_f64)
+        .map(|v| v.pgfault_delta)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_free = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgfault_delta > 0_f64)
-        .map(|vmstat| vmstat.pgfault_delta)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgfault_delta > 0_f64)
+        .map(|v| v.pgfault_delta)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgfault_delta)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgfault_delta)),
             ShapeStyle {
                 color: BLACK.into(),
                 filled: true,
@@ -346,54 +394,59 @@ pub fn pages_allocated_and_free(
     // pgalloc
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| {
-            (vmstat.pgalloc_dma
-                + vmstat.pgalloc_dma32
-                + vmstat.pgalloc_normal
-                + vmstat.pgalloc_device
-                + vmstat.pgalloc_movable)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| {
+            (v.pgalloc_dma
+                + v.pgalloc_dma32
+                + v.pgalloc_normal
+                + v.pgalloc_device
+                + v.pgalloc_movable)
                 > 0_f64
         })
-        .map(|vmstat| {
-            vmstat.pgalloc_dma
-                + vmstat.pgalloc_dma32
-                + vmstat.pgalloc_normal
-                + vmstat.pgalloc_device
-                + vmstat.pgalloc_movable
+        .map(|v| {
+            v.pgalloc_dma
+                + v.pgalloc_dma32
+                + v.pgalloc_normal
+                + v.pgalloc_device
+                + v.pgalloc_movable
         })
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| {
-            (vmstat.pgalloc_dma
-                + vmstat.pgalloc_dma32
-                + vmstat.pgalloc_normal
-                + vmstat.pgalloc_device
-                + vmstat.pgalloc_movable)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| {
+            (v.pgalloc_dma
+                + v.pgalloc_dma32
+                + v.pgalloc_normal
+                + v.pgalloc_device
+                + v.pgalloc_movable)
                 > 0_f64
         })
-        .map(|vmstat| {
-            vmstat.pgalloc_dma
-                + vmstat.pgalloc_dma32
-                + vmstat.pgalloc_normal
-                + vmstat.pgalloc_device
-                + vmstat.pgalloc_movable
+        .map(|v| {
+            v.pgalloc_dma
+                + v.pgalloc_dma32
+                + v.pgalloc_normal
+                + v.pgalloc_device
+                + v.pgalloc_movable
         })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
-            historical_data_read.iter().map(|vmstat| {
-                (
-                    vmstat.timestamp,
-                    (vmstat.pgalloc_dma
-                        + vmstat.pgalloc_dma32
-                        + vmstat.pgalloc_normal
-                        + vmstat.pgalloc_device
-                        + vmstat.pgalloc_movable),
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| {
+                    (
+                        v.timestamp,
+                        (v.pgalloc_dma
+                            + v.pgalloc_dma32
+                            + v.pgalloc_normal
+                            + v.pgalloc_device
+                            + v.pgalloc_movable),
+                    )
+                }),
             ShapeStyle {
                 color: RED.into(),
                 filled: true,
@@ -418,21 +471,24 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_kswapd > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_kswapd)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_kswapd > 0_f64)
+        .map(|v| v.pgsteal_kswapd)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_kswapd > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_kswapd)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_kswapd > 0_f64)
+        .map(|v| v.pgsteal_kswapd)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgsteal_kswapd)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgsteal_kswapd)),
             BLUE_900,
         ))
         .unwrap()
@@ -447,21 +503,24 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_kswapd > 0_f64)
-        .map(|vmstat| vmstat.pgscan_kswapd)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_kswapd > 0_f64)
+        .map(|v| v.pgscan_kswapd)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_kswapd > 0_f64)
-        .map(|vmstat| vmstat.pgscan_kswapd)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_kswapd > 0_f64)
+        .map(|v| v.pgscan_kswapd)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgscan_kswapd)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgscan_kswapd)),
             BLUE_300,
         ))
         .unwrap()
@@ -478,14 +537,16 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_direct > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_direct)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_direct > 0_f64)
+        .map(|v| v.pgsteal_direct)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_direct > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_direct)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_direct > 0_f64)
+        .map(|v| v.pgsteal_direct)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
@@ -509,21 +570,24 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_direct > 0_f64)
-        .map(|vmstat| vmstat.pgscan_direct)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_direct > 0_f64)
+        .map(|v| v.pgscan_direct)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_direct > 0_f64)
-        .map(|vmstat| vmstat.pgscan_direct)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_direct > 0_f64)
+        .map(|v| v.pgscan_direct)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgscan_direct)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgscan_direct)),
             ORANGE_300,
         ))
         .unwrap()
@@ -542,21 +606,24 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_khugepaged > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_khugepaged)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_khugepaged > 0_f64)
+        .map(|v| v.pgsteal_khugepaged)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgsteal_khugepaged > 0_f64)
-        .map(|vmstat| vmstat.pgsteal_khugepaged)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgsteal_khugepaged > 0_f64)
+        .map(|v| v.pgsteal_khugepaged)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgsteal_khugepaged)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgsteal_khugepaged)),
             LIGHTGREEN_900,
         ))
         .unwrap()
@@ -573,21 +640,24 @@ pub fn pages_allocated_and_free(
     //
     let min_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_khugepaged > 0_f64)
-        .map(|vmstat| vmstat.pgscan_khugepaged)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_khugepaged > 0_f64)
+        .map(|v| v.pgscan_khugepaged)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_alloc = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.pgscan_khugepaged > 0_f64)
-        .map(|vmstat| vmstat.pgscan_khugepaged)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.pgscan_khugepaged > 0_f64)
+        .map(|v| v.pgscan_khugepaged)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|vmstat| (vmstat.timestamp, vmstat.pgscan_khugepaged)),
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.pgscan_khugepaged)),
             LIGHTGREEN_300,
         ))
         .unwrap()
@@ -605,14 +675,16 @@ pub fn pages_allocated_and_free(
     // this is a plot to only show the amount of oom kills
     let min_oom_kill = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.oom_kill > 0_f64)
-        .map(|vmstat| vmstat.oom_kill)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.oom_kill > 0_f64)
+        .map(|v| v.oom_kill)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_oom_kill = historical_data_read
         .iter()
-        .filter(|vmstat| vmstat.oom_kill > 0_f64)
-        .map(|vmstat| vmstat.oom_kill)
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.oom_kill > 0_f64)
+        .map(|v| v.oom_kill)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
@@ -620,7 +692,7 @@ pub fn pages_allocated_and_free(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|vmstat| (vmstat.timestamp, vmstat.oom_kill)),
+                .map(|v| (v.timestamp, v.oom_kill)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,

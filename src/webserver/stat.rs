@@ -12,62 +12,79 @@ use crate::{
     LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
     MESH_STYLE_FONT_SIZE,
 };
+use chrono::{DateTime, Local};
 
-pub fn create_cpu_load_pressure_plot(buffer: &mut [u8]) {
+pub fn create_cpu_load_pressure_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
-    cpu_total_plot(&mut multi_backend, 0);
-    load_plot(&mut multi_backend, 1);
-    pressure_cpu_some_plot(&mut multi_backend, 2);
+    cpu_total_plot(&mut multi_backend, 0, start_time, end_time);
+    load_plot(&mut multi_backend, 1, start_time, end_time);
+    pressure_cpu_some_plot(&mut multi_backend, 2, start_time, end_time);
 }
-pub fn create_cpu_load_plot(buffer: &mut [u8]) {
+pub fn create_cpu_load_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    cpu_total_plot(&mut multi_backend, 0);
-    load_plot(&mut multi_backend, 1);
+    cpu_total_plot(&mut multi_backend, 0, start_time, end_time);
+    load_plot(&mut multi_backend, 1, start_time, end_time);
 }
-pub fn create_cpu_plot(buffer: &mut [u8]) {
+pub fn create_cpu_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
-    cpu_total_plot(&mut multi_backend, 0);
+    cpu_total_plot(&mut multi_backend, 0, start_time, end_time);
 }
 fn cpu_total_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.cpu.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|cpustat| cpustat.timestamp)
-        .min()
-        .unwrap();
-    let end_time = historical_data_read
-        .iter()
-        .map(|cpustat| cpustat.timestamp)
-        .max()
-        .unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|c| c.timestamp)
+            .min()
+            .unwrap()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|c| c.timestamp)
+            .max()
+            .unwrap()
+    };
     let low_value: f64 = 0.0;
     let high_value_cpu = historical_data_read
         .iter()
-        .map(|cpustat| {
-            (cpustat.user
-                + cpustat.nice
-                + cpustat.system
-                + cpustat.iowait
-                + cpustat.steal
-                + cpustat.irq
-                + cpustat.softirq
-                + cpustat.idle)
-                * 1.1_f64
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| {
+            (c.user + c.nice + c.system + c.iowait + c.steal + c.irq + c.softirq + c.idle) * 1.1_f64
         })
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_schedstat = historical_data_read
         .iter()
-        .map(|cpustat| (cpustat.scheduler_running + cpustat.scheduler_waiting) * 1.1_f64)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| (c.scheduler_running + c.scheduler_waiting) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value = vec![high_value_cpu, high_value_schedstat]
@@ -86,7 +103,7 @@ fn cpu_total_plot(
             "Total CPU usage",
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
-        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, low_value..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -105,7 +122,7 @@ fn cpu_total_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|cpustat| (cpustat.timestamp, cpustat.scheduler_waiting)),
+                .map(|c| (c.timestamp, c.scheduler_waiting)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -121,22 +138,22 @@ fn cpu_total_plot(
     // scheduler waiting = scheduler_waiting + scheduler_running
     let min_scheduler_wait = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.scheduler_waiting)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.scheduler_waiting)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_scheduler_wait = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.scheduler_waiting)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.scheduler_waiting)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.scheduler_waiting + cpustat.scheduler_running,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.scheduler_waiting + c.scheduler_running)),
             0.0,
             PURPLE,
         ))
@@ -150,19 +167,22 @@ fn cpu_total_plot(
     // scheduler running
     let min_scheduler_run = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.scheduler_running)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.scheduler_running)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_scheduler_run = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.scheduler_running)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.scheduler_running)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|cpustat| (cpustat.timestamp, cpustat.scheduler_running)),
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.scheduler_running)),
             0.0,
             Palette99::pick(palette99_pick),
         ))
@@ -182,30 +202,35 @@ fn cpu_total_plot(
     // guest_nice = guest_nice + guest_user + softirq + irq + steal + iowait + system + nice + user
     let min_guest_nice = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.guest_nice)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.guest_nice)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_guest_nice = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.guest_nice)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.guest_nice)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.guest_nice
-                        + cpustat.guest
-                        + cpustat.softirq
-                        + cpustat.irq
-                        + cpustat.steal
-                        + cpustat.iowait
-                        + cpustat.system
-                        + cpustat.nice
-                        + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| {
+                    (
+                        c.timestamp,
+                        c.guest_nice
+                            + c.guest
+                            + c.softirq
+                            + c.irq
+                            + c.steal
+                            + c.iowait
+                            + c.system
+                            + c.nice
+                            + c.user,
+                    )
+                }),
             0.0,
             YELLOW_600,
         ))
@@ -222,29 +247,34 @@ fn cpu_total_plot(
     // guest_user = guest_user + softirq + irq + steal + iowait + system + nice + user
     let min_guest_user = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.guest)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.guest)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_guest_user = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.guest)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.guest)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.guest
-                        + cpustat.softirq
-                        + cpustat.irq
-                        + cpustat.steal
-                        + cpustat.iowait
-                        + cpustat.system
-                        + cpustat.nice
-                        + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| {
+                    (
+                        c.timestamp,
+                        c.guest
+                            + c.softirq
+                            + c.irq
+                            + c.steal
+                            + c.iowait
+                            + c.system
+                            + c.nice
+                            + c.user,
+                    )
+                }),
             0.0,
             GREEN_A400,
         ))
@@ -261,28 +291,27 @@ fn cpu_total_plot(
     // softirq = softirq + irq + steal + iowait + system + nice + user
     let min_softirq = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.softirq)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.softirq)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_softirq = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.softirq)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.softirq)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.softirq
-                        + cpustat.irq
-                        + cpustat.steal
-                        + cpustat.iowait
-                        + cpustat.system
-                        + cpustat.nice
-                        + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| {
+                    (
+                        c.timestamp,
+                        c.softirq + c.irq + c.steal + c.iowait + c.system + c.nice + c.user,
+                    )
+                }),
             0.0,
             LIGHTBLUE,
         ))
@@ -297,27 +326,27 @@ fn cpu_total_plot(
     // irq = irq + steal + iowait + system + nice + user
     let min_irq = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.irq)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.irq)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_irq = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.irq)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.irq)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.irq
-                        + cpustat.steal
-                        + cpustat.iowait
-                        + cpustat.system
-                        + cpustat.nice
-                        + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| {
+                    (
+                        c.timestamp,
+                        c.irq + c.steal + c.iowait + c.system + c.nice + c.user,
+                    )
+                }),
             0.0,
             Palette99::pick(palette99_pick),
         ))
@@ -337,22 +366,22 @@ fn cpu_total_plot(
     // steal = steal + iowait + system + nice + user
     let min_steal = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.steal)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.steal)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_steal = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.steal)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.steal)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.steal + cpustat.iowait + cpustat.system + cpustat.nice + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.steal + c.iowait + c.system + c.nice + c.user)),
             0.0,
             Palette99::pick(palette99_pick),
         ))
@@ -372,22 +401,22 @@ fn cpu_total_plot(
     // iowait = iowait + system + nice + user
     let min_iowait = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.iowait)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.iowait)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_iowait = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.iowait)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.iowait)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.iowait + cpustat.system + cpustat.nice + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.iowait + c.system + c.nice + c.user)),
             0.0,
             GREY,
         ))
@@ -402,22 +431,22 @@ fn cpu_total_plot(
     // system = system + nice + user
     let min_system = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.system)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.system)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_system = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.system)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.system)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|cpustat| {
-                (
-                    cpustat.timestamp,
-                    cpustat.system + cpustat.nice + cpustat.user,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.system + c.nice + c.user)),
             0.0,
             RED,
         ))
@@ -432,19 +461,22 @@ fn cpu_total_plot(
     // nice = nice + user
     let min_nice = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.nice)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.nice)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_nice = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.nice)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.nice)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|cpustat| (cpustat.timestamp, cpustat.nice + cpustat.user)),
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.nice + c.user)),
             0.0,
             YELLOW,
         ))
@@ -459,19 +491,22 @@ fn cpu_total_plot(
     // user
     let min_user = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.user)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.user)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_user = historical_data_read
         .iter()
-        .map(|cpustat| cpustat.user)
+        .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+        .map(|c| c.user)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|cpustat| (cpustat.timestamp, cpustat.user)),
+                .filter(|c| c.timestamp >= final_start_time && c.timestamp <= final_end_time)
+                .map(|c| (c.timestamp, c.user)),
             0.0,
             GREEN,
         ))
@@ -485,19 +520,19 @@ fn cpu_total_plot(
     // draw a line for total cpu
     contextarea
         .draw_series(LineSeries::new(
-            historical_data_read.iter().map(|cpustat| {
+            historical_data_read.iter().map(|c| {
                 (
-                    cpustat.timestamp,
-                    (cpustat.guest_nice
-                        + cpustat.guest
-                        + cpustat.idle
-                        + cpustat.softirq
-                        + cpustat.irq
-                        + cpustat.steal
-                        + cpustat.iowait
-                        + cpustat.system
-                        + cpustat.nice
-                        + cpustat.user)
+                    c.timestamp,
+                    (c.guest_nice
+                        + c.guest
+                        + c.idle
+                        + c.softirq
+                        + c.irq
+                        + c.steal
+                        + c.iowait
+                        + c.system
+                        + c.nice
+                        + c.user)
                         .round(),
                 )
             }),

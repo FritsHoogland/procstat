@@ -1,12 +1,11 @@
 use crate::ARGS;
+use chrono::{DateTime, Local};
 use plotters::backend::{BitMapBackend, RGBPixel};
 use plotters::chart::SeriesLabelPosition::UpperLeft;
 use plotters::chart::{ChartBuilder, LabelAreaPosition};
 use plotters::coord::Shift;
 use plotters::drawing::DrawingArea;
-//use plotters::element::Rectangle;
 use plotters::prelude::*;
-//use plotters::style::full_palette::{GREY_500, GREY_A100};
 
 use crate::{
     CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
@@ -14,32 +13,47 @@ use crate::{
     MESH_STYLE_FONT_SIZE,
 };
 
-pub fn create_xfs_plot(buffer: &mut [u8]) {
+pub fn create_xfs_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    xfs_iops_plot(&mut multi_backend, 0);
-    xfs_mbps_plot(&mut multi_backend, 1);
+    xfs_iops_plot(&mut multi_backend, 0, start_time, end_time);
+    xfs_mbps_plot(&mut multi_backend, 1, start_time, end_time);
 }
 
 pub fn xfs_iops_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.xfs.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|r| r.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|r| r.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|x| x.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|x| x.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let high_value = historical_data_read
         .iter()
-        .map(|r| (r.xs_read_calls + r.xs_write_calls) * 1.1_f64)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| (x.xs_read_calls + x.xs_write_calls) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let latest = historical_data_read.back().unwrap();
@@ -51,7 +65,7 @@ pub fn xfs_iops_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("XFS IOPS", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -68,7 +82,7 @@ pub fn xfs_iops_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|r| (r.timestamp, r.xs_read_calls)),
+                .map(|x| (x.timestamp, x.xs_read_calls)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -83,20 +97,23 @@ pub fn xfs_iops_plot(
 
     let min_total_calls = historical_data_read
         .iter()
-        .filter(|r| r.xs_read_calls + r.xs_write_calls > 0_f64)
-        .map(|r| r.xs_read_calls + r.xs_write_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_read_calls + x.xs_write_calls > 0_f64)
+        .map(|x| x.xs_read_calls + x.xs_write_calls)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_total_calls = historical_data_read
         .iter()
-        .map(|r| r.xs_read_calls + r.xs_write_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| x.xs_read_calls + x.xs_write_calls)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|r| (r.timestamp, r.xs_read_calls + r.xs_write_calls)),
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .map(|x| (x.timestamp, x.xs_read_calls + x.xs_write_calls)),
             BLACK,
         ))
         .unwrap()
@@ -111,21 +128,24 @@ pub fn xfs_iops_plot(
     // write calls
     let min_xfs_write_calls = historical_data_read
         .iter()
-        .filter(|r| r.xs_write_calls > 0_f64)
-        .map(|r| r.xs_write_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_write_calls > 0_f64)
+        .map(|x| x.xs_write_calls)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_xfs_write_calls = historical_data_read
         .iter()
-        .map(|r| r.xs_write_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| x.xs_write_calls)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|r| r.xs_write_calls > 0_f64)
-                .map(|r| Circle::new((r.timestamp, r.xs_write_calls), 4, RED.filled())),
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .filter(|x| x.xs_write_calls > 0_f64)
+                .map(|x| Circle::new((x.timestamp, x.xs_write_calls), 4, RED.filled())),
         )
         .unwrap()
         .label(format!(
@@ -136,21 +156,24 @@ pub fn xfs_iops_plot(
     // read calls
     let min_xfs_read_calls = historical_data_read
         .iter()
-        .filter(|r| r.xs_read_calls > 0_f64)
-        .map(|r| r.xs_read_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_read_calls > 0_f64)
+        .map(|x| x.xs_read_calls)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_xfs_read_calls = historical_data_read
         .iter()
-        .map(|r| r.xs_read_calls)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| x.xs_read_calls)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|r| r.xs_read_calls > 0_f64)
-                .map(|r| Circle::new((r.timestamp, r.xs_read_calls), 3, GREEN.filled())),
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .filter(|x| x.xs_read_calls > 0_f64)
+                .map(|x| Circle::new((x.timestamp, x.xs_read_calls), 3, GREEN.filled())),
         )
         .unwrap()
         .label(format!(
@@ -172,21 +195,32 @@ pub fn xfs_iops_plot(
 pub fn xfs_mbps_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.xfs.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|r| r.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|r| r.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|x| x.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|x| x.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let high_value = historical_data_read
         .iter()
-        .map(|r| ((r.xs_read_bytes + r.xs_write_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| ((x.xs_read_bytes + x.xs_write_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let latest = historical_data_read.back().unwrap();
@@ -198,7 +232,7 @@ pub fn xfs_mbps_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("XFS MBPS", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, 0_f64..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -215,7 +249,7 @@ pub fn xfs_mbps_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|r| (r.timestamp, r.xs_read_bytes)),
+                .map(|x| (x.timestamp, x.xs_read_bytes)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -230,23 +264,28 @@ pub fn xfs_mbps_plot(
 
     let min_total_mbps = historical_data_read
         .iter()
-        .filter(|r| r.xs_read_bytes + r.xs_write_bytes > 0_f64)
-        .map(|r| (r.xs_read_bytes + r.xs_write_bytes) / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_read_bytes + x.xs_write_bytes > 0_f64)
+        .map(|x| (x.xs_read_bytes + x.xs_write_bytes) / (1024_f64 * 1024_f64))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_total_mbps = historical_data_read
         .iter()
-        .map(|r| (r.xs_read_bytes + r.xs_write_bytes) / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .map(|x| (x.xs_read_bytes + x.xs_write_bytes) / (1024_f64 * 1024_f64))
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
-            historical_data_read.iter().map(|r| {
-                (
-                    r.timestamp,
-                    (r.xs_read_bytes + r.xs_write_bytes) / (1024_f64 * 1024_f64),
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .map(|x| {
+                    (
+                        x.timestamp,
+                        (x.xs_read_bytes + x.xs_write_bytes) / (1024_f64 * 1024_f64),
+                    )
+                }),
             BLACK,
         ))
         .unwrap()
@@ -261,24 +300,27 @@ pub fn xfs_mbps_plot(
     // write bytes
     let min_xfs_write_mbps = historical_data_read
         .iter()
-        .filter(|r| r.xs_write_bytes > 0_f64)
-        .map(|r| r.xs_write_bytes / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_write_bytes > 0_f64)
+        .map(|x| x.xs_write_bytes / (1024_f64 * 1024_f64))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_xfs_write_mbps = historical_data_read
         .iter()
-        .filter(|r| r.xs_write_bytes > 0_f64)
-        .map(|r| r.xs_write_bytes / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_write_bytes > 0_f64)
+        .map(|x| x.xs_write_bytes / (1024_f64 * 1024_f64))
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|r| r.xs_write_bytes > 0_f64)
-                .map(|r| {
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .filter(|x| x.xs_write_bytes > 0_f64)
+                .map(|x| {
                     Circle::new(
-                        (r.timestamp, r.xs_write_bytes / (1024_f64 * 1024_f64)),
+                        (x.timestamp, x.xs_write_bytes / (1024_f64 * 1024_f64)),
                         4,
                         RED.filled(),
                     )
@@ -296,24 +338,27 @@ pub fn xfs_mbps_plot(
     // read bytes
     let min_xfs_read_bytes = historical_data_read
         .iter()
-        .filter(|r| r.xs_read_bytes > 0_f64)
-        .map(|r| r.xs_read_bytes / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_read_bytes > 0_f64)
+        .map(|x| x.xs_read_bytes / (1024_f64 * 1024_f64))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_xfs_read_bytes = historical_data_read
         .iter()
-        .filter(|r| r.xs_read_bytes > 0_f64)
-        .map(|r| r.xs_read_bytes / (1024_f64 * 1024_f64))
+        .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+        .filter(|x| x.xs_read_bytes > 0_f64)
+        .map(|x| x.xs_read_bytes / (1024_f64 * 1024_f64))
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(
             historical_data_read
                 .iter()
-                .filter(|r| r.xs_read_bytes > 0_f64)
-                .map(|r| {
+                .filter(|x| x.timestamp >= final_start_time && x.timestamp <= final_end_time)
+                .filter(|x| x.xs_read_bytes > 0_f64)
+                .map(|x| {
                     Circle::new(
-                        (r.timestamp, r.xs_read_bytes / (1024_f64 * 1024_f64)),
+                        (x.timestamp, x.xs_read_bytes / (1024_f64 * 1024_f64)),
                         3,
                         GREEN.filled(),
                     )

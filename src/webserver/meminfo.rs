@@ -19,74 +19,110 @@ use crate::{
     LABEL_AREA_SIZE_BOTTOM, LABEL_AREA_SIZE_LEFT, LABEL_AREA_SIZE_RIGHT, MESH_STYLE_FONT,
     MESH_STYLE_FONT_SIZE,
 };
+use chrono::{DateTime, Local};
 use sysctl::{Ctl, Sysctl};
 
-pub fn create_memory_plot(buffer: &mut [u8]) {
+pub fn create_memory_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((1, 1));
-    memory_plot(&mut multi_backend, 0);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
 }
 
-pub fn create_memory_psi_plot(buffer: &mut [u8]) {
+pub fn create_memory_psi_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    memory_plot(&mut multi_backend, 0);
-    pressure_memory_plot(&mut multi_backend, 1);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    pressure_memory_plot(&mut multi_backend, 1, start_time, end_time);
 }
 
-pub fn create_memory_commit(buffer: &mut [u8]) {
+pub fn create_memory_commit(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    memory_plot(&mut multi_backend, 0);
-    committed_mem_plot(&mut multi_backend, 1);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    committed_mem_plot(&mut multi_backend, 1, start_time, end_time);
 }
 
-pub fn create_memory_active_inactive_plot(buffer: &mut [u8]) {
+pub fn create_memory_active_inactive_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    memory_plot(&mut multi_backend, 0);
-    active_inactive_mem_plot(&mut multi_backend, 1);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    active_inactive_mem_plot(&mut multi_backend, 1, start_time, end_time);
 }
 
-pub fn create_memory_swap_plot(buffer: &mut [u8]) {
+pub fn create_memory_swap_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((2, 1));
-    memory_plot(&mut multi_backend, 0);
-    swap_space_plot(&mut multi_backend, 1);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    swap_space_plot(&mut multi_backend, 1, start_time, end_time);
 }
 
-pub fn create_memory_swap_inout_plot(buffer: &mut [u8]) {
+pub fn create_memory_swap_inout_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((3, 1));
-    memory_plot(&mut multi_backend, 0);
-    swap_inout_plot(&mut multi_backend, 1);
-    swap_space_plot(&mut multi_backend, 2);
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    swap_inout_plot(&mut multi_backend, 1, start_time, end_time);
+    swap_space_plot(&mut multi_backend, 2, start_time, end_time);
 }
 pub fn memory_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.memory.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .min()
-        .unwrap_or_default();
-    let end_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .max()
-        .unwrap_or_default();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
     let low_value: f64 = 0.0;
     let high_value = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.memtotal * 1.1_f64) / 1024_f64)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.memtotal * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let latest = historical_data_read.back();
@@ -106,7 +142,7 @@ pub fn memory_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("Memory", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, low_value..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -132,7 +168,7 @@ pub fn memory_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|meminfo| (meminfo.timestamp, meminfo.memtotal)),
+                .map(|m| (m.timestamp, m.memtotal)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -148,19 +184,22 @@ pub fn memory_plot(
     // memory total; this is the total limit, so it doesn't need to be stacked.
     let min_memory_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memtotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memtotal)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_memory_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memtotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memtotal)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memtotal / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memtotal / 1024_f64)),
             0.0,
             Palette99::pick(1),
         ))
@@ -185,33 +224,38 @@ pub fn memory_plot(
     // hugepages_used, hugepages_reserved, hugepages_free (=hugepages_total), buffers, swapcached, kernelstack, hardwarecorrupted, slab, pagetables, dirty, shmem, cached, mapped, anonymous, memfree
     let min_hugepages_used = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepages_total - m.hugepages_free) * m.hugepagesize)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_hugepages_used = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepages_total - meminfo.hugepages_free) * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepages_total - m.hugepages_free) * m.hugepagesize)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     // issue: https://github.com/FritsHoogland/procstat/issues/1: hugepages_used should be
     // hugepages_total, so that hugepages_free can overwrite all that is free.
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.hugetlb
-                        + meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted
-                        + meminfo.kernelstack)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.hugetlb
+                            + m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted
+                            + m.kernelstack)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             GREY_900,
         ))
@@ -232,31 +276,36 @@ pub fn memory_plot(
     // therefore the area that it will draw is simply hugepages_free in total
     let min_hugepages_reserved = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.hugepages_reserved * m.hugepagesize)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_hugepages_reserved = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.hugepages_reserved * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.hugepages_reserved * m.hugepagesize)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    ((meminfo.hugepages_free * meminfo.hugepagesize)
-                        + meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted
-                        + meminfo.kernelstack)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        ((m.hugepages_free * m.hugepagesize)
+                            + m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted
+                            + m.kernelstack)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             GREY_600,
         ))
@@ -277,32 +326,36 @@ pub fn memory_plot(
     // hugepages_reserved drawing.
     let min_hugepages_free = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepages_free - meminfo.hugepages_reserved) * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepages_free - m.hugepages_reserved) * m.hugepagesize)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_hugepages_free = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepages_free - meminfo.hugepages_reserved) * meminfo.hugepagesize)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepages_free - m.hugepages_reserved) * m.hugepagesize)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (((meminfo.hugepages_free - meminfo.hugepages_reserved)
-                        * meminfo.hugepagesize)
-                        + meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted
-                        + meminfo.kernelstack)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (((m.hugepages_free - m.hugepages_reserved) * m.hugepagesize)
+                            + m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted
+                            + m.kernelstack)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             GREY_300,
         ))
@@ -322,30 +375,35 @@ pub fn memory_plot(
     // kernelstack
     let min_kernelstack = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.kernelstack)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.kernelstack)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_kernelstack = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.kernelstack)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.kernelstack)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted
-                        + meminfo.kernelstack)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted
+                            + m.kernelstack)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             ORANGE,
         ))
@@ -361,30 +419,35 @@ pub fn memory_plot(
     // swapcached
     let min_swapcached = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swapcached)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.swapcached)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_swapcached = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swapcached)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.swapcached)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted
-                        + meminfo.swapcached)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted
+                            + m.swapcached)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             BLUE,
         ))
@@ -400,29 +463,34 @@ pub fn memory_plot(
     // hardwarecorrupted
     let min_hardwarecorrupted = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.hardwarecorrupted)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.hardwarecorrupted)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_hardwarecorrupted = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.hardwarecorrupted)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.hardwarecorrupted)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables
-                        + meminfo.hardwarecorrupted)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.cached
+                            + m.anonpages
+                            + m.slab
+                            + m.buffers
+                            + m.pagetables
+                            + m.hardwarecorrupted)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             RED_100,
         ))
@@ -438,28 +506,28 @@ pub fn memory_plot(
     // pagetables
     let min_pagetables = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.pagetables)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.pagetables)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_pagetables = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.pagetables)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.pagetables)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.slab
-                        + meminfo.buffers
-                        + meminfo.pagetables)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + m.cached + m.anonpages + m.slab + m.buffers + m.pagetables)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             LIGHTGREEN_400,
         ))
@@ -477,27 +545,27 @@ pub fn memory_plot(
     // slab
     let min_slab = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.slab)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.slab)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_slab = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.slab)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.slab)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.cached
-                        + meminfo.anonpages
-                        + meminfo.buffers
-                        + meminfo.slab)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + m.cached + m.anonpages + m.buffers + m.slab) / 1024_f64,
+                    )
+                }),
             0.0,
             PURPLE_800,
         ))
@@ -515,23 +583,27 @@ pub fn memory_plot(
     // buffers
     let min_buffers = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.buffers)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.buffers)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_buffers = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.buffers)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.buffers)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + meminfo.cached + meminfo.anonpages + meminfo.buffers)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + m.cached + m.anonpages + m.buffers) / 1024_f64,
+                    )
+                }),
             0.0,
             CYAN,
         ))
@@ -547,22 +619,22 @@ pub fn memory_plot(
     // anonymous
     let min_anonpages = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.anonpages)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.anonpages)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_anonpages = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.anonpages)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.anonpages)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + meminfo.cached + meminfo.anonpages) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, (m.memfree + m.cached + m.anonpages) / 1024_f64)),
             0.0,
             BROWN_500,
         ))
@@ -579,22 +651,22 @@ pub fn memory_plot(
     // dirty
     let min_dirty = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.dirty)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.dirty)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_dirty = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.dirty)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.dirty)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + meminfo.cached) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, (m.memfree + m.cached) / 1024_f64)),
             0.0,
             RED,
         ))
@@ -610,22 +682,22 @@ pub fn memory_plot(
     // shmem
     let min_shmem = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.shmem)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.shmem)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_shmem = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.shmem)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.shmem)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + (meminfo.cached - meminfo.dirty)) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, (m.memfree + (m.cached - m.dirty)) / 1024_f64)),
             0.0,
             PURPLE_100,
         ))
@@ -643,22 +715,27 @@ pub fn memory_plot(
     // mapped
     let min_mapped = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.mapped)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.mapped)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_mapped = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.mapped)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.mapped)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + (meminfo.cached - meminfo.dirty - meminfo.shmem)) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + (m.cached - m.dirty - m.shmem)) / 1024_f64,
+                    )
+                }),
             0.0,
             AMBER_400,
         ))
@@ -674,24 +751,27 @@ pub fn memory_plot(
     // cached
     let min_cached = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.cached - m.mapped.max(m.shmem) - m.dirty)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_cached = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.cached - m.mapped.max(m.shmem) - m.dirty)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + (meminfo.cached - meminfo.mapped.max(meminfo.shmem) - meminfo.dirty))
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + (m.cached - m.mapped.max(m.shmem) - m.dirty)) / 1024_f64,
+                    )
+                }),
             0.0,
             AMBER_100,
         ))
@@ -712,19 +792,22 @@ pub fn memory_plot(
     // memfree
     let min_memfree = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memfree)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memfree)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_memfree = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memfree)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memfree)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memfree / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memfree / 1024_f64)),
             0.0,
             LIGHTGREEN,
         ))
@@ -743,19 +826,22 @@ pub fn memory_plot(
     // memavailable
     let min_memavailable = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memavailable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memavailable)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_memavailable = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memavailable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memavailable)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memavailable / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memavailable / 1024_f64)),
             ShapeStyle {
                 color: RED.into(),
                 filled: false,
@@ -777,7 +863,8 @@ pub fn memory_plot(
             .draw_series(LineSeries::new(
                 historical_data_read
                     .iter()
-                    .map(|meminfo| (meminfo.timestamp, min_free_kbytes / 1024_f64)),
+                    .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                    .map(|m| (m.timestamp, min_free_kbytes / 1024_f64)),
                 ShapeStyle {
                     color: BLACK.into(),
                     filled: false,
@@ -788,12 +875,15 @@ pub fn memory_plot(
         // pages_low
         contextarea
             .draw_series(LineSeries::new(
-                historical_data_read.iter().map(|meminfo| {
-                    (
-                        meminfo.timestamp,
-                        (min_free_kbytes + (min_free_kbytes / 4_f64)) / 1024_f64,
-                    )
-                }),
+                historical_data_read
+                    .iter()
+                    .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                    .map(|m| {
+                        (
+                            m.timestamp,
+                            (min_free_kbytes + (min_free_kbytes / 4_f64)) / 1024_f64,
+                        )
+                    }),
                 ShapeStyle {
                     color: BLACK.into(),
                     filled: false,
@@ -804,12 +894,15 @@ pub fn memory_plot(
         // pages_high
         contextarea
             .draw_series(LineSeries::new(
-                historical_data_read.iter().map(|meminfo| {
-                    (
-                        meminfo.timestamp,
-                        (min_free_kbytes + (min_free_kbytes / 2_f64)) / 1024_f64,
-                    )
-                }),
+                historical_data_read
+                    .iter()
+                    .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                    .map(|m| {
+                        (
+                            m.timestamp,
+                            (min_free_kbytes + (min_free_kbytes / 2_f64)) / 1024_f64,
+                        )
+                    }),
                 ShapeStyle {
                     color: BLACK.into(),
                     filled: false,
@@ -832,22 +925,33 @@ pub fn memory_plot(
 fn swap_space_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.memory.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .min()
-        .unwrap();
-    let end_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .max()
-        .unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .min()
+            .unwrap()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .max()
+            .unwrap()
+    };
     let low_value: f64 = 0.0;
     let high_value = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.swaptotal * 1.1_f64) / 1024_f64)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.swaptotal * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let latest = historical_data_read.back().unwrap();
@@ -859,7 +963,7 @@ fn swap_space_plot(
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
         .caption("Swap usage", (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE))
-        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, low_value..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -885,7 +989,7 @@ fn swap_space_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|meminfo| (meminfo.timestamp, meminfo.swaptotal)),
+                .map(|m| (m.timestamp, m.swaptotal)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -900,19 +1004,22 @@ fn swap_space_plot(
     // swap total; this is the total, so it doesn't need to be stacked.
     let min_swap_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swaptotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.swaptotal)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_swap_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swaptotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.swaptotal)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.swaptotal / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.swaptotal / 1024_f64)),
             0.0,
             GREEN,
         ))
@@ -928,22 +1035,21 @@ fn swap_space_plot(
     // swap used
     let min_swap_used = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swaptotal - meminfo.swapfree)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.swaptotal - m.swapfree)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_swap_used = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.swaptotal - meminfo.swapfree)
+        .map(|m| m.swaptotal - m.swapfree)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.swaptotal - meminfo.swapfree) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, (m.swaptotal - m.swapfree) / 1024_f64)),
             0.0,
             RED,
         ))
@@ -971,22 +1077,33 @@ fn swap_space_plot(
 fn active_inactive_mem_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.memory.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .min()
-        .unwrap();
-    let end_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .max()
-        .unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .min()
+            .unwrap()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .max()
+            .unwrap()
+    };
     let low_value: f64 = 0.0;
     let high_value = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.memtotal * 1.1_f64) / 1024_f64)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.memtotal * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let latest = historical_data_read.back().unwrap();
@@ -1001,7 +1118,7 @@ fn active_inactive_mem_plot(
             "active/inactive memory",
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
-        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, low_value..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -1027,7 +1144,7 @@ fn active_inactive_mem_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|meminfo| (meminfo.timestamp, meminfo.swaptotal)),
+                .map(|m| (m.timestamp, m.swaptotal)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -1042,19 +1159,22 @@ fn active_inactive_mem_plot(
     // swap total; this is the total, so it doesn't need to be stacked.
     let min_mem_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memtotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memtotal)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_mem_total = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memtotal)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memtotal)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memtotal / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memtotal / 1024_f64)),
             0.0,
             Palette99::pick(1),
         ))
@@ -1087,30 +1207,35 @@ fn active_inactive_mem_plot(
     // hugepages
     let min_hugepages = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepagesize * meminfo.hugepages_total))
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepagesize * m.hugepages_total))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_hugepages = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.hugepagesize * meminfo.hugepages_total))
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.hugepagesize * m.hugepages_total))
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    ((meminfo.hugepagesize * meminfo.hugepages_total)
-                        + meminfo.memfree
-                        + meminfo.sreclaimable
-                        + meminfo.inactive_anon
-                        + meminfo.inactive_file
-                        + meminfo.sunreclaim
-                        + meminfo.active_anon
-                        + meminfo.active_file)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        ((m.hugepagesize * m.hugepages_total)
+                            + m.memfree
+                            + m.sreclaimable
+                            + m.inactive_anon
+                            + m.inactive_file
+                            + m.sunreclaim
+                            + m.active_anon
+                            + m.active_file)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             GREY.filled(),
         ))
@@ -1126,29 +1251,34 @@ fn active_inactive_mem_plot(
     // active_anon
     let min_active_anon = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.active_anon)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.active_anon)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_active_anon = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.active_anon)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.active_anon)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.inactive_file
-                        + meminfo.active_file
-                        + meminfo.sreclaimable
-                        + meminfo.sunreclaim
-                        + meminfo.inactive_anon
-                        + meminfo.active_anon)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.inactive_file
+                            + m.active_file
+                            + m.sreclaimable
+                            + m.sunreclaim
+                            + m.inactive_anon
+                            + m.active_anon)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             BROWN_500.filled(),
         ))
@@ -1164,28 +1294,33 @@ fn active_inactive_mem_plot(
     // inactive_anon
     let min_inactive_anon = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.inactive_anon)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.inactive_anon)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_inactive_anon = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.inactive_anon)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.inactive_anon)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.inactive_file
-                        + meminfo.active_file
-                        + meminfo.sreclaimable
-                        + meminfo.sunreclaim
-                        + meminfo.inactive_anon)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.inactive_file
+                            + m.active_file
+                            + m.sreclaimable
+                            + m.sunreclaim
+                            + m.inactive_anon)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             BROWN_400.filled(),
         ))
@@ -1201,27 +1336,32 @@ fn active_inactive_mem_plot(
     // sunreclaim
     let min_sunreclaim = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.sunreclaim)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.sunreclaim)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_sunreclaim = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.sunreclaim)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.sunreclaim)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.inactive_file
-                        + meminfo.active_file
-                        + meminfo.sreclaimable
-                        + meminfo.sunreclaim)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree
+                            + m.inactive_file
+                            + m.active_file
+                            + m.sreclaimable
+                            + m.sunreclaim)
+                            / 1024_f64,
+                    )
+                }),
             0.0,
             PURPLE_800.filled(),
         ))
@@ -1239,26 +1379,27 @@ fn active_inactive_mem_plot(
     // sreclaimable
     let min_sreclaim = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.sreclaimable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.sreclaimable)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_sreclaim = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.sreclaimable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.sreclaimable)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree
-                        + meminfo.inactive_file
-                        + meminfo.active_file
-                        + meminfo.sreclaimable)
-                        / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + m.inactive_file + m.active_file + m.sreclaimable) / 1024_f64,
+                    )
+                }),
             0.0,
             PURPLE_100.filled(),
         ))
@@ -1276,22 +1417,27 @@ fn active_inactive_mem_plot(
     // active_file
     let min_active_file = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.active_file)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.active_file)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_active_file = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.active_file)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.active_file)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + meminfo.inactive_file + meminfo.active_file) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| {
+                    (
+                        m.timestamp,
+                        (m.memfree + m.inactive_file + m.active_file) / 1024_f64,
+                    )
+                }),
             0.0,
             AMBER_700.filled(),
         ))
@@ -1307,22 +1453,22 @@ fn active_inactive_mem_plot(
     // inactive_file
     let min_inactive_file = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.inactive_file)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.inactive_file)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_inactive_file = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.inactive_file)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.inactive_file)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
-            historical_data_read.iter().map(|meminfo| {
-                (
-                    meminfo.timestamp,
-                    (meminfo.memfree + meminfo.inactive_file) / 1024_f64,
-                )
-            }),
+            historical_data_read
+                .iter()
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, (m.memfree + m.inactive_file) / 1024_f64)),
             0.0,
             AMBER_100.filled(),
         ))
@@ -1338,19 +1484,22 @@ fn active_inactive_mem_plot(
     // memfree
     let min_free = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memfree)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memfree)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_free = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memfree)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memfree)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memfree / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memfree / 1024_f64)),
             0.0,
             LIGHTGREEN.filled(),
         ))
@@ -1368,19 +1517,22 @@ fn active_inactive_mem_plot(
     // memavailable
     let min_memavailable = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memavailable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memavailable)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     let max_memavailable = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.memavailable)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.memavailable)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or_default();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.memavailable / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.memavailable / 1024_f64)),
             ShapeStyle {
                 color: RED.into(),
                 filled: false,
@@ -1411,27 +1563,39 @@ fn active_inactive_mem_plot(
 fn committed_mem_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
 ) {
     let historical_data_read = DATA.memory.read().unwrap();
-    let start_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .min()
-        .unwrap();
-    let end_time = historical_data_read
-        .iter()
-        .map(|meminfo| meminfo.timestamp)
-        .max()
-        .unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .min()
+            .unwrap()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|m| m.timestamp)
+            .max()
+            .unwrap()
+    };
     let low_value: f64 = 0.0;
     let high_value_committed_as = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.committed_as * 1.1_f64) / 1024_f64)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.committed_as * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value_commitlimit = historical_data_read
         .iter()
-        .map(|meminfo| (meminfo.commitlimit * 1.1_f64) / 1024_f64)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| (m.commitlimit * 1.1_f64) / 1024_f64)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let high_value = high_value_committed_as.max(high_value_commitlimit);
@@ -1447,7 +1611,7 @@ fn committed_mem_plot(
             "Committed memory overview",
             (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
         )
-        .build_cartesian_2d(start_time..end_time, low_value..high_value)
+        .build_cartesian_2d(final_start_time..final_end_time, low_value..high_value)
         .unwrap();
     contextarea
         .configure_mesh()
@@ -1473,7 +1637,7 @@ fn committed_mem_plot(
             historical_data_read
                 .iter()
                 .take(1)
-                .map(|meminfo| (meminfo.timestamp, meminfo.swaptotal)),
+                .map(|m| (m.timestamp, m.swaptotal)),
             ShapeStyle {
                 color: TRANSPARENT,
                 filled: false,
@@ -1488,19 +1652,22 @@ fn committed_mem_plot(
     // committed_as
     let min_committed_as = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.committed_as)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.committed_as)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_committed_as = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.committed_as)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.committed_as)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(AreaSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.committed_as / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.committed_as / 1024_f64)),
             0.0,
             BLUE,
         ))
@@ -1516,19 +1683,22 @@ fn committed_mem_plot(
     // commitlimit used
     let min_commitlimit = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.commitlimit)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.commitlimit)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let max_commitlimit = historical_data_read
         .iter()
-        .map(|meminfo| meminfo.commitlimit)
+        .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+        .map(|m| m.commitlimit)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     contextarea
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .map(|meminfo| (meminfo.timestamp, meminfo.commitlimit / 1024_f64)),
+                .filter(|m| m.timestamp >= final_start_time && m.timestamp <= final_end_time)
+                .map(|m| (m.timestamp, m.commitlimit / 1024_f64)),
             ShapeStyle {
                 color: BLACK.into(),
                 filled: false,
