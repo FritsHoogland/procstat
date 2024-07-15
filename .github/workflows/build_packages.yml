@@ -26,7 +26,6 @@ jobs:
     strategy:
       matrix:
         container:
-          - centos:7
           - rockylinux:8
           - rockylinux:9
     container:
