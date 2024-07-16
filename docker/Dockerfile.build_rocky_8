@@ -1,0 +1,26 @@
+# rockylinux 8
+FROM rockylinux:8 as builder
+
+# setup source directory
+WORKDIR /usr/src/procstat
+COPY . .
+
+# prepare operating system and install rust
+RUN yum update -y
+RUN yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/root/.cargo/bin
+
+# build executable
+RUN cargo build --release
+RUN strip -s target/release/procstat
+
+# generate RPM
+# generate rpm version 0.14.1, 0.15 currently is broken
+RUN cargo install cargo-generate-rpm@0.14.1
+RUN cargo generate-rpm --set-metadata='release = "1.el8"'
+#RUN ls -ls /usr/src/procstat/target/generate-rpm/*
+
+FROM scratch as export-stage
+# output file
+COPY --from=builder /usr/src/procstat/target/generate-rpm/* /
