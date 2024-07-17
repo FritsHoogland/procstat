@@ -6,8 +6,14 @@ WORKDIR /usr/src/procstat
 COPY . .
 
 # prepare operating system and install rust
-RUN yum update -y
-RUN yum install -y openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
+# centos 7 is old and a bit weird because of the transition it went through.
+# for some reason, the 2009 repo is not in the docker image.
+# therefore I created a repo file and copy that into the image.
+# after it used the C7.9.2009 repos and updated the image, it will complain that it has multiple C7.9.2009 repo entries.
+# however, it still works.
+COPY docker/centos7.repo /etc/yum.repos.d/vault_2009.repo
+RUN yum update -y --disablerepo=updates --disablerepo=extras --disablerepo=base --enablerepo=C7.9.2009-base --enablerepo=C7.9.2009-updates --enablerepo=C7.9.2009-extras
+RUN yum install -y --disablerepo=updates --disablerepo=extras --disablerepo=base --enablerepo=C7.9.2009-base --enablerepo=C7.9.2009-updates --enablerepo=C7.9.2009-extras openssl-devel gcc cmake gcc-c++ freetype-devel expat-devel open-sans-fonts fontconfig-devel
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/root/.cargo/bin
 
@@ -16,10 +22,9 @@ RUN cargo build --release
 RUN strip -s target/release/procstat
 
 # generate RPM
-# generate rpm version 0.14.1, 0.15 currently is broken
+# generate rpm version 0.14.1
 RUN cargo install cargo-generate-rpm@0.14.1
-RUN cargo generate-rpm --set-metadata='release = "1.el7"'
-#RUN ls -ls /usr/src/procstat/target/generate-rpm/*
+RUN cargo generate-rpm --payload-compress=gzip --set-metadata='release = "1.el7"'
 
 FROM scratch as export-stage
 # output file
