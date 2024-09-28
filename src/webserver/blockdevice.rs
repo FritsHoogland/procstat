@@ -1,3 +1,6 @@
+use ordered_float::OrderedFloat;
+use std::collections::BTreeSet;
+
 use plotters::backend::{BitMapBackend, RGBPixel};
 
 use crate::webserver::pressure::pressure_io_plot;
@@ -24,13 +27,9 @@ pub fn create_blockdevice_plot(
         .into_drawing_area();
     let nr = if device_name == "TOTAL" { 3 } else { 4 };
     let mut multi_backend = backend.split_evenly((nr, 1));
-    blockdevice_mbps_plot(
-        &mut multi_backend,
-        0,
-        device_name.clone(),
-        start_time,
-        end_time,
-    );
+    let mut mbps_graph = multi_backend[0].split_horizontally((60).percent_width());
+    blockdevice_mbps_plot(&mut mbps_graph.0, device_name.clone(), start_time, end_time);
+    blockdevice_mbps_percentile_plot(&mut mbps_graph.1, device_name.clone(), start_time, end_time);
     blockdevice_iops_plot(
         &mut multi_backend,
         1,
@@ -60,7 +59,7 @@ pub fn create_blockdevice_plot_extra(
         .into_drawing_area();
     let nr = if device_name == "TOTAL" { 3 } else { 5 };
     let mut multi_backend = backend.split_evenly((nr, 1));
-    blockdevice_mbps_plot(
+    blockdevice_mbps_array_plot(
         &mut multi_backend,
         0,
         device_name.clone(),
@@ -102,7 +101,7 @@ pub fn create_blockdevice_psi_plot(
     let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
         .into_drawing_area();
     let mut multi_backend = backend.split_evenly((4, 1));
-    blockdevice_mbps_plot(
+    blockdevice_mbps_array_plot(
         &mut multi_backend,
         0,
         device_name.clone(),
@@ -120,7 +119,561 @@ pub fn create_blockdevice_psi_plot(
     pressure_io_plot(&mut multi_backend, 3, start_time, end_time);
 }
 
+fn blockdevice_mbps_percentile_plot(
+    multi_backend: &mut DrawingArea<BitMapBackend<RGBPixel>, Shift>,
+    device_name: String,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
+    multi_backend.fill(&WHITE).unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
+
+    let mut writes_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    let mut reads_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    let mut total_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.writes_bytes / (1024_f64 * 1024_f64))
+        .for_each(|w| {
+            writes_set.insert(OrderedFloat(w));
+        });
+    historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.reads_bytes / (1024_f64 * 1024_f64))
+        .for_each(|r| {
+            reads_set.insert(OrderedFloat(r));
+        });
+    historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| (b.reads_bytes + b.writes_bytes) / (1024_f64 * 1024_f64))
+        .for_each(|t| {
+            total_set.insert(OrderedFloat(t));
+        });
+    let sample_interval =
+        (final_end_time - final_start_time) / total_set.len().try_into().unwrap_or(1);
+    // create the plot
+    let mut contextarea = ChartBuilder::on(&multi_backend)
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption(
+            format!("Blockdevice: {} MBPS percentiles", device_name),
+            (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
+        )
+        .build_cartesian_2d(
+            0..total_set.len(),
+            0_f64..total_set.last().unwrap_or(&OrderedFloat(0.)).into_inner() * 1.1,
+        )
+        .unwrap();
+    contextarea
+        .configure_mesh()
+        .x_label_formatter(&|sample_number| {
+            format!(
+                "{:3.0}",
+                (total_set.len() - sample_number).as_f64() / total_set.len().as_f64() * 100.
+            )
+        })
+        .x_desc(format!(
+            "Percentile (avg sample rate {}s)",
+            sample_interval.num_seconds()
+        ))
+        .y_desc("MBPS")
+        .y_label_formatter(&|mbps| {
+            if mbps == &0_f64 {
+                format!("{:5.0}", mbps)
+            } else if mbps < &1_f64 {
+                format!("{:5.3}", mbps)
+            } else {
+                format!("{:5.0}", mbps)
+            }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    //
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea
+        .draw_series(LineSeries::new(
+            std::iter::once((0, 0_f64)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            "ptile", "max", "99.9", "75", "50", "avg", "25", "min"
+        ));
+    contextarea
+        .draw_series(LineSeries::new(
+            std::iter::once((0, 0_f64)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0}",
+            "nr",
+            0,
+            total_set.len() as f64 / 100_f64 * 0.1,
+            total_set.len() as f64 / 100_f64 * 25.,
+            total_set.len() as f64 / 100_f64 * 50.,
+            "-",
+            total_set.len() as f64 / 100_f64 * 75.,
+            total_set.len()
+        ));
+    contextarea
+        .draw_series(LineSeries::new(
+            total_set
+                .iter()
+                .rev()
+                .enumerate()
+                .map(|(nr, t)| (nr, t.into_inner())),
+            BLACK,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            "total",
+            total_set.last().unwrap_or(&OrderedFloat(0.)).into_inner(), // min value
+            total_set
+                .iter()
+                .nth((total_set.len() as f64 / 100_f64 * 99.9) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 99.9 percentile
+            total_set
+                .iter()
+                .nth((total_set.len() as f64 / 100_f64 * 75.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 75 percentile
+            total_set
+                .iter()
+                .nth((total_set.len() as f64 / 100_f64 * 50.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 50 percentile / median
+            total_set.iter().map(|t| t.into_inner()).sum::<f64>() / total_set.len() as f64,
+            total_set
+                .iter()
+                .nth((total_set.len() as f64 / 100_f64 * 25.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 25 percentile
+            total_set.first().unwrap_or(&OrderedFloat(0.)).into_inner(), // max value
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    contextarea
+        .draw_series(LineSeries::new(
+            writes_set
+                .iter()
+                .rev()
+                .enumerate()
+                .map(|(nr, w)| (nr, w.into_inner())),
+            RED,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            "write",
+            writes_set.last().unwrap_or(&OrderedFloat(0.)).into_inner(), // min value
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 99.9) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 99.9 percentile
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 75.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 75 percentile
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 50.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 50 percentile / median
+            writes_set.iter().map(|t| t.into_inner()).sum::<f64>() / writes_set.len() as f64,
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 25.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 25 percentile / median
+            writes_set.first().unwrap_or(&OrderedFloat(0.)).into_inner(), // max value
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+    contextarea
+        .draw_series(LineSeries::new(
+            reads_set
+                .iter()
+                .rev()
+                .enumerate()
+                .map(|(nr, r)| (nr, r.into_inner())),
+            GREEN,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            "read",
+            reads_set.last().unwrap_or(&OrderedFloat(0.)).into_inner(), // min value
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 99.9) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 99.9 percentile
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 75.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 75 percentile / median
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 50.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 50 percentile / median
+            reads_set.iter().map(|t| t.into_inner()).sum::<f64>() / reads_set.len() as f64,
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 25.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 25 percentile / median
+            reads_set.first().unwrap_or(&OrderedFloat(0.)).into_inner(), // max value
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+    /*
+        // write MBPS
+        let min_write_mbps = historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+            .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+            .map(|b| b.writes_bytes / (1024_f64 * 1024_f64))
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or_default();
+        let max_write_mbps = historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+            .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+            .map(|b| b.writes_bytes / (1024_f64 * 1024_f64))
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or_default();
+        contextarea
+            .draw_series(
+                historical_data_read
+                    .iter()
+                    .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+                    .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+                    .map(|b| {
+                        Circle::new(
+                            (b.timestamp, b.writes_bytes / (1024_f64 * 1024_f64)),
+                            4,
+                            RED.filled(),
+                        )
+                    }),
+            )
+            .unwrap()
+            .label(format!(
+                "{:25} {:10.2} {:10.2} {:10.2}",
+                "write",
+                min_write_mbps,
+                max_write_mbps,
+                latest.map_or(0_f64, |latest| latest.writes_bytes) / (1024_f64 * 1024_f64)
+            ))
+            .legend(move |(x, y)| Circle::new((x, y), 4, RED.filled()));
+        // read MBPS
+        let min_read_mbps = historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+            .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+            .map(|b| b.reads_bytes / (1024_f64 * 1024_f64))
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or_default();
+        let max_read_mbps = historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+            .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+            .map(|b| b.reads_bytes / (1024_f64 * 1024_f64))
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or_default();
+        contextarea
+            .draw_series(
+                historical_data_read
+                    .iter()
+                    .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+                    .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+                    .map(|b| {
+                        Circle::new(
+                            (b.timestamp, b.reads_bytes / (1024_f64 * 1024_f64)),
+                            3,
+                            GREEN.filled(),
+                        )
+                    }),
+            )
+            .unwrap()
+            .label(format!(
+                "{:25} {:10.2} {:10.2} {:10.2}",
+                "read",
+                min_read_mbps,
+                max_read_mbps,
+                latest.map_or(0_f64, |latest| latest.reads_bytes) / (1024_f64 * 1024_f64)
+            ))
+            .legend(move |(x, y)| Circle::new((x, y), 3, GREEN.filled()));
+    */
+    // legend
+    contextarea
+        .configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+}
 fn blockdevice_mbps_plot(
+    multi_backend: &mut DrawingArea<BitMapBackend<RGBPixel>, Shift>,
+    device_name: String,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
+    multi_backend.fill(&WHITE).unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
+    let high_value = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| ((b.reads_bytes + b.writes_bytes) / (1024_f64 * 1024_f64)) * 1.1_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let latest = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .last();
+
+    // create the plot
+    let mut contextarea = ChartBuilder::on(&multi_backend)
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption(
+            format!("Blockdevice: {} MBPS", device_name),
+            (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
+        )
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
+        .unwrap();
+    contextarea
+        .configure_mesh()
+        //.x_labels(6)
+        .x_label_formatter(&|timestamp| timestamp.format("%H:%M:%S").to_string())
+        .x_desc(format!(
+            "Time: {} to {} ({} minutes)",
+            final_start_time.format("%Y-%m-%d %H:%M:%S%:z"),
+            final_end_time.format("%Y-%m-%d %H:%M:%S%:z"),
+            (final_end_time - final_start_time).num_minutes(),
+        ))
+        .y_desc("MBPS")
+        .y_label_formatter(&|mbps| {
+            if mbps == &0_f64 {
+                format!("{:5.0}", mbps)
+            } else if mbps < &1_f64 {
+                format!("{:5.3}", mbps)
+            } else {
+                format!("{:5.0}", mbps)
+            }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    //
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea
+        .draw_series(LineSeries::new(
+            std::iter::once((Local::now(), 0_f64)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:>10} {:>10} {:>10}",
+            "", "min", "max", "last"
+        ));
+    //
+    // total MBPS
+    // this is a line graph, so total MBPS = read + write bytes.
+    // discards to not add to bandwidth.
+    let min_total_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && (b.writes_bytes + b.reads_bytes) > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| (b.writes_bytes + b.reads_bytes) / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_total_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && (b.writes_bytes + b.reads_bytes) > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| (b.writes_bytes + b.reads_bytes) / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .filter(|b| b.device_name == device_name)
+                .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+                .map(|b| {
+                    (
+                        b.timestamp,
+                        (b.writes_bytes + b.reads_bytes) / (1024_f64 * 1024_f64),
+                    )
+                }),
+            BLACK,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "total",
+            min_total_mbps,
+            max_total_mbps,
+            ((latest.map_or(0_f64, |latest| latest.writes_bytes + latest.reads_bytes))
+                / (1024_f64 * 1024_f64))
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // write MBPS
+    let min_write_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.writes_bytes / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_write_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.writes_bytes / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(
+            historical_data_read
+                .iter()
+                .filter(|b| b.device_name == device_name && b.writes_bytes > 0_f64)
+                .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+                .map(|b| {
+                    Circle::new(
+                        (b.timestamp, b.writes_bytes / (1024_f64 * 1024_f64)),
+                        2,
+                        RED.filled(),
+                    )
+                }),
+        )
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "write",
+            min_write_mbps,
+            max_write_mbps,
+            latest.map_or(0_f64, |latest| latest.writes_bytes) / (1024_f64 * 1024_f64)
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+    // read MBPS
+    let min_read_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.reads_bytes / (1024_f64 * 1024_f64))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_read_mbps = historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| b.reads_bytes / (1024_f64 * 1024_f64))
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(
+            historical_data_read
+                .iter()
+                .filter(|b| b.device_name == device_name && b.reads_bytes > 0_f64)
+                .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+                .map(|b| {
+                    Circle::new(
+                        (b.timestamp, b.reads_bytes / (1024_f64 * 1024_f64)),
+                        1,
+                        GREEN.filled(),
+                    )
+                }),
+        )
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "read",
+            min_read_mbps,
+            max_read_mbps,
+            latest.map_or(0_f64, |latest| latest.reads_bytes) / (1024_f64 * 1024_f64)
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+    // legend
+    contextarea
+        .configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+}
+fn blockdevice_mbps_array_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
     backend_number: usize,
     device_name: String,

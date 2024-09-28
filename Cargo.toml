@@ -31,6 +31,7 @@ sysctl = "0.5.5"
 thiserror = "1.0.62"
 tokio = { version = "1.38.0", features = ["full"] }
 axum_session = "0.14.0"
+ordered-float = "4.2.2"
 
 [package.metadata.generate-rpm]
 assets = [
