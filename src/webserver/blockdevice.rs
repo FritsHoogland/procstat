@@ -33,13 +33,28 @@ pub fn create_blockdevice_plot(
     let mut iops_graph = multi_backend[1].split_horizontally((60).percent_width());
     blockdevice_iops_plot(&mut iops_graph.0, device_name.clone(), start_time, end_time);
     blockdevice_iops_percentile_plot(&mut iops_graph.1, device_name.clone(), start_time, end_time);
+    let mut lat_queue_graph = multi_backend[2].split_horizontally((60).percent_width());
     blockdevice_latency_queuedepth_plot(
-        &mut multi_backend,
-        2,
+        &mut lat_queue_graph.0,
         device_name.clone(),
         start_time,
         end_time,
     );
+    blockdevice_latency_percentile_plot(
+        &mut lat_queue_graph.1,
+        device_name.clone(),
+        start_time,
+        end_time,
+    );
+    /*
+        blockdevice_latency_queuedepth_plot(
+            &mut multi_backend,
+            2,
+            device_name.clone(),
+            start_time,
+            end_time,
+        );
+    */
     if device_name != "TOTAL" {
         blockdevice_iosize_plot(&mut multi_backend, 3, device_name, start_time, end_time)
     };
@@ -79,13 +94,28 @@ pub fn create_blockdevice_plot_extra(
         end_time,
     );
     */
+    let mut lat_queue_graph = multi_backend[2].split_horizontally((60).percent_width());
     blockdevice_latency_queuedepth_plot(
-        &mut multi_backend,
-        2,
+        &mut lat_queue_graph.0,
         device_name.clone(),
         start_time,
         end_time,
     );
+    blockdevice_latency_percentile_plot(
+        &mut lat_queue_graph.1,
+        device_name.clone(),
+        start_time,
+        end_time,
+    );
+    /*
+        blockdevice_latency_queuedepth_plot(
+            &mut multi_backend,
+            2,
+            device_name.clone(),
+            start_time,
+            end_time,
+        );
+    */
     if device_name != "TOTAL" {
         blockdevice_iosize_plot(
             &mut multi_backend,
@@ -110,28 +140,23 @@ pub fn create_blockdevice_psi_plot(
     let mut mbps_graph = multi_backend[0].split_horizontally((60).percent_width());
     blockdevice_mbps_plot(&mut mbps_graph.0, device_name.clone(), start_time, end_time);
     blockdevice_mbps_percentile_plot(&mut mbps_graph.1, device_name.clone(), start_time, end_time);
-    /*
-        blockdevice_mbps_array_plot(
-            &mut multi_backend,
-            0,
-            device_name.clone(),
-            start_time,
-            end_time,
-        );
-    */
     let mut iops_graph = multi_backend[1].split_horizontally((60).percent_width());
     blockdevice_iops_plot(&mut iops_graph.0, device_name.clone(), start_time, end_time);
     blockdevice_iops_percentile_plot(&mut iops_graph.1, device_name.clone(), start_time, end_time);
-    /*
-    blockdevice_iops_plot(
-        &mut multi_backend,
-        1,
+    let mut lat_queue_graph = multi_backend[2].split_horizontally((60).percent_width());
+    blockdevice_latency_queuedepth_plot(
+        &mut lat_queue_graph.0,
         device_name.clone(),
         start_time,
         end_time,
     );
-    */
-    blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name, start_time, end_time);
+    blockdevice_latency_percentile_plot(
+        &mut lat_queue_graph.1,
+        device_name.clone(),
+        start_time,
+        end_time,
+    );
+    //blockdevice_latency_queuedepth_plot(&mut multi_backend, 2, device_name, start_time, end_time);
     pressure_io_plot(&mut multi_backend, 3, start_time, end_time);
 }
 
@@ -219,6 +244,7 @@ fn blockdevice_mbps_percentile_plot(
             "Percentile (avg sample rate {}s)",
             sample_interval.num_seconds()
         ))
+        .x_labels(12)
         .y_desc("MBPS")
         .y_label_formatter(&|mbps| {
             if mbps == &0_f64 {
@@ -707,6 +733,7 @@ fn blockdevice_iops_percentile_plot(
             "Percentile (avg sample rate {}s)",
             sample_interval.num_seconds()
         ))
+        .x_labels(12)
         .y_desc("IOPS")
         .y_label_formatter(&|iops| {
             if iops == &0_f64 {
@@ -914,7 +941,7 @@ fn blockdevice_iops_percentile_plot(
                 .unwrap_or(&OrderedFloat(0.))
                 .into_inner(), // max value
         ))
-        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], PURPLE.filled()));
     // legend
     contextarea
         .configure_series_labels()
@@ -1188,14 +1215,244 @@ fn blockdevice_iops_plot(
         .unwrap();
 }
 
-fn blockdevice_latency_queuedepth_plot(
-    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
-    backend_number: usize,
+fn blockdevice_latency_percentile_plot(
+    multi_backend: &mut DrawingArea<BitMapBackend<RGBPixel>, Shift>,
     device_name: String,
     start_time: Option<DateTime<Local>>,
     end_time: Option<DateTime<Local>>,
 ) {
-    multi_backend[backend_number].fill(&WHITE).unwrap();
+    multi_backend.fill(&WHITE).unwrap();
+    let historical_data_read = DATA.blockdevices.read().unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .filter(|b| b.device_name == device_name)
+            .map(|b| b.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
+
+    let mut writes_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    let mut reads_set: BTreeSet<OrderedFloat<f64>> = BTreeSet::new();
+    historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| {
+            if b.writes_completed_success == 0_f64 {
+                0_f64
+            } else {
+                b.writes_time_spent_ms / b.writes_completed_success
+            }
+        })
+        .for_each(|w| {
+            writes_set.insert(OrderedFloat(w));
+        });
+    historical_data_read
+        .iter()
+        .filter(|b| b.device_name == device_name)
+        .filter(|b| b.timestamp >= final_start_time && b.timestamp <= final_end_time)
+        .map(|b| {
+            if b.reads_completed_success == 0_f64 {
+                0_f64
+            } else {
+                b.reads_time_spent_ms / b.reads_completed_success
+            }
+        })
+        .for_each(|r| {
+            reads_set.insert(OrderedFloat(r));
+        });
+    let sample_interval =
+        (final_end_time - final_start_time) / writes_set.len().try_into().unwrap_or(1);
+    // create the plot
+    let mut contextarea = ChartBuilder::on(&multi_backend)
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption(
+            format!("Blockdevice: {} latency percentiles", device_name),
+            (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
+        )
+        .build_cartesian_2d(
+            0..writes_set.len(),
+            0_f64
+                ..writes_set
+                    .last()
+                    .unwrap_or(&OrderedFloat(0_f64))
+                    .max(reads_set.last().unwrap_or(&OrderedFloat(0_f64)))
+                    .into_inner()
+                    * 1.1,
+        )
+        .unwrap();
+    contextarea
+        .configure_mesh()
+        .x_label_formatter(&|sample_number| {
+            format!(
+                "{:3.0}",
+                (writes_set.len() - sample_number).as_f64() / writes_set.len().as_f64() * 100.
+            )
+        })
+        .x_desc(format!(
+            "Percentile (avg sample rate {}s)",
+            sample_interval.num_seconds()
+        ))
+        .x_labels(12)
+        .y_label_formatter(&|latency| {
+            if latency == &0_f64 {
+                format!("{:5.0} ms", latency)
+            } else if latency < &0.1_f64 {
+                format!("{:5.3} ms", latency)
+            } else if latency < &10_f64 {
+                format!("{:5.1} ms", latency)
+            } else {
+                format!("{:5.0} ms", latency)
+            }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    //
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea
+        .draw_series(LineSeries::new(
+            std::iter::once((0, 0_f64)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
+            "ptile", "max", "99.9", "75", "50", "avg", "25", "min"
+        ));
+    contextarea
+        .draw_series(LineSeries::new(
+            std::iter::once((0, 0_f64)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0} {:>9.0}",
+            "nr",
+            0,
+            writes_set.len() as f64 / 100_f64 * 0.1,
+            writes_set.len() as f64 / 100_f64 * 25.,
+            writes_set.len() as f64 / 100_f64 * 50.,
+            "-",
+            writes_set.len() as f64 / 100_f64 * 75.,
+            writes_set.len()
+        ));
+    contextarea
+        .draw_series(LineSeries::new(
+            writes_set
+                .iter()
+                .rev()
+                .enumerate()
+                .map(|(nr, w)| (nr, w.into_inner())),
+            RED,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            "write",
+            writes_set.last().unwrap_or(&OrderedFloat(0.)).into_inner(), // min value
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 99.9) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 99.9 percentile
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 75.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 75 percentile
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 50.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 50 percentile / median
+            writes_set.iter().map(|t| t.into_inner()).sum::<f64>() / writes_set.len() as f64,
+            writes_set
+                .iter()
+                .nth((writes_set.len() as f64 / 100_f64 * 25.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 25 percentile / median
+            writes_set.first().unwrap_or(&OrderedFloat(0.)).into_inner(), // max value
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], RED.filled()));
+    contextarea
+        .draw_series(LineSeries::new(
+            reads_set
+                .iter()
+                .rev()
+                .enumerate()
+                .map(|(nr, r)| (nr, r.into_inner())),
+            GREEN,
+        ))
+        .unwrap()
+        .label(format!(
+            "{:6} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2} {:9.2}",
+            "read",
+            reads_set.last().unwrap_or(&OrderedFloat(0.)).into_inner(), // min value
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 99.9) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 99.9 percentile
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 75.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 75 percentile / median
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 50.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 50 percentile / median
+            reads_set.iter().map(|t| t.into_inner()).sum::<f64>() / reads_set.len() as f64,
+            reads_set
+                .iter()
+                .nth((reads_set.len() as f64 / 100_f64 * 25.) as usize)
+                .unwrap_or(&OrderedFloat(0.))
+                .into_inner(), // 25 percentile / median
+            reads_set.first().unwrap_or(&OrderedFloat(0.)).into_inner(), // max value
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], GREEN.filled()));
+    // legend
+    contextarea
+        .configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+}
+fn blockdevice_latency_queuedepth_plot(
+    multi_backend: &mut DrawingArea<BitMapBackend<RGBPixel>, Shift>,
+    device_name: String,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
+    multi_backend.fill(&WHITE).unwrap();
     //
     // read, write and discard latency and queue depth plot
     let historical_data_read = DATA.blockdevices.read().unwrap();
@@ -1298,8 +1555,8 @@ fn blockdevice_latency_queuedepth_plot(
     };
 
     // create the plot
-    multi_backend[2].fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
+    multi_backend.fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend)
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
