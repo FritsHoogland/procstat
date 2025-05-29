@@ -1,0 +1,10 @@
+# procstat logrotate file: 
+# - change the path to the directory containing the JSON files to be rotated
+# - place the file in /etc/logrotate.d/
+# path plus extension of procstat archives
+*json {
+    daily
+    rotate 7
+    compress
+    missingok  
+}

@@ -136,6 +136,13 @@ pub struct Opts {
         default_value = "1200"
     )]
     pub graph_height: u32,
+    /// disk filter
+    #[arg(
+        long,
+        value_name = "disk filter",
+        default_value = "^dm-"
+    )]
+    pub disk_filter: String,
 }
 static DATA: Lazy<Data> = Lazy::new(|| Data::new(Opts::parse().history));
 

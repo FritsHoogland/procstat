@@ -7,7 +7,7 @@ use crate::DATA;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use log::debug;
-use proc_sys_parser::block::SysBlock;
+use proc_sys_parser::block::{Builder, SysBlock};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
 
@@ -52,7 +52,8 @@ pub struct BlockDeviceInfo {
 }
 
 pub async fn read_blockdevice_sys_data() -> Result<SysBlock> {
-    let sys_block = proc_sys_parser::block::read()?;
+    //let sys_block = proc_sys_parser::block::read()?;
+    let sys_block = Builder::new().regex(&ARGS.disk_filter).read()?;
     debug!("{:?}", sys_block);
     Ok(sys_block)
 }
