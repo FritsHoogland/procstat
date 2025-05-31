@@ -13,6 +13,7 @@ use plotters::style::full_palette::{
 
 use crate::webserver::pressure::pressure_memory_plot;
 use crate::webserver::vmstat::swap_inout_plot;
+use crate::webserver::vmstat::pages_dirty;
 use crate::ARGS;
 use crate::{
     CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE, DATA, LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE,
@@ -92,6 +93,17 @@ pub fn create_memory_swap_inout_plot(
     memory_plot(&mut multi_backend, 0, start_time, end_time);
     swap_inout_plot(&mut multi_backend, 1, start_time, end_time);
     swap_space_plot(&mut multi_backend, 2, start_time, end_time);
+}
+pub fn create_memory_dirty_plot(
+    buffer: &mut [u8],
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
+    let backend = BitMapBackend::with_buffer(buffer, (ARGS.graph_width, ARGS.graph_height))
+        .into_drawing_area();
+    let mut multi_backend = backend.split_evenly((2, 1));
+    memory_plot(&mut multi_backend, 0, start_time, end_time);
+    pages_dirty(&mut multi_backend, 1, start_time, end_time);
 }
 pub fn memory_plot(
     multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],

@@ -9,7 +9,7 @@ pub mod xfs;
 
 use crate::webserver::meminfo::{
     create_memory_plot, create_memory_psi_plot, create_memory_swap_inout_plot,
-    create_memory_swap_plot,
+    create_memory_swap_plot, create_memory_dirty_plot,
 };
 use crate::webserver::net_dev::create_networkdevice_plot;
 use crate::webserver::stat::create_cpu_plot;
@@ -103,7 +103,6 @@ pub async fn time_form() -> String {
             )
             .as_str();
             minute = format!("{}", timestamp.format("%M"));
-        } else {
         };
     }
 
@@ -123,7 +122,6 @@ pub async fn time_form() -> String {
             )
             .as_str();
             minute = format!("{}", timestamp.format("%M"));
-        } else {
         };
     }
     form += r#"
@@ -243,6 +241,7 @@ pub async fn root_handler() -> Html<String> {
      <li><a href="/handler/memory_swap/x" target="right">Memory-swapspace</a></li>
      <li><a href="/handler/memory_swap_inout/x" target="right">Memory-swapspace-swapio</a></li>
      <li><a href="/handler/memory_act_inact/x" target="right">Memory-active-inactive</a></li>
+     <li><a href="/handler/memory_dirty/x" target="right">Memory-dirty</a></li>
      <li><a href="/handler/xfs/x" target="right">Filesystem-XFS</a></li>
      {html_for_blockdevices}
      {html_for_blockdevices_psi}
@@ -297,6 +296,7 @@ pub async fn handler_plotter(
         "memory_swap" => create_memory_swap_plot(&mut buffer, start_time, end_time),
         "memory_swap_inout" => create_memory_swap_inout_plot(&mut buffer, start_time, end_time),
         "memory_act_inact" => create_memory_active_inactive_plot(&mut buffer, start_time, end_time),
+        "memory_dirty" => create_memory_dirty_plot(&mut buffer, start_time, end_time),
         "xfs" => create_xfs_plot(&mut buffer, start_time, end_time),
         &_ => todo!(),
     }

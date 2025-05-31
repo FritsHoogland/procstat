@@ -107,7 +107,7 @@ fn networkdevice_mbit_percentile_plot(
     let sample_interval =
         (final_end_time - final_start_time) / total_set.len().try_into().unwrap_or(1);
     // create the plot
-    let mut contextarea = ChartBuilder::on(&multi_backend)
+    let mut contextarea = ChartBuilder::on(multi_backend)
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
@@ -361,7 +361,7 @@ fn networkdevice_mbit_plot(
 
     // create the plot
     multi_backend.fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend)
+    let mut contextarea = ChartBuilder::on(multi_backend)
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
@@ -621,7 +621,7 @@ fn networkdevice_packet_percentile_plot(
     let sample_interval =
         (final_end_time - final_start_time) / total_set.len().try_into().unwrap_or(1);
     // create the plot
-    let mut contextarea = ChartBuilder::on(&multi_backend)
+    let mut contextarea = ChartBuilder::on(multi_backend)
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         .caption(
@@ -864,7 +864,7 @@ fn networkdevice_packet_plot(
 
     // create the plot
     multi_backend.fill(&WHITE).unwrap();
-    let mut contextarea = ChartBuilder::on(&multi_backend)
+    let mut contextarea = ChartBuilder::on(multi_backend)
         .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
         .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
         //.set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)

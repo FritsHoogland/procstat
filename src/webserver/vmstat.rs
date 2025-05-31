@@ -14,7 +14,7 @@ use plotters::drawing::DrawingArea;
 use plotters::element::Rectangle;
 use plotters::prelude::*;
 use plotters::style::full_palette::{
-    BLUE_300, BLUE_900, LIGHTGREEN_300, LIGHTGREEN_900, ORANGE_300, ORANGE_900,
+    BLUE_300, BLUE_900, LIGHTGREEN_300, LIGHTGREEN_900, ORANGE_300, ORANGE_900, PURPLE,
 };
 
 pub fn create_memory_alloc_plot(
@@ -707,6 +707,213 @@ pub fn pages_allocated_and_free(
             max_oom_kill,
             latest.map_or(0_f64, |l| l.oom_kill)
         ));
+    //
+    // draw the legend
+    contextarea
+        .configure_series_labels()
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.7))
+        .label_font((LABELS_STYLE_FONT, LABELS_STYLE_FONT_SIZE))
+        .position(UpperLeft)
+        .draw()
+        .unwrap();
+}
+
+pub fn pages_dirty(
+    multi_backend: &mut [DrawingArea<BitMapBackend<RGBPixel>, Shift>],
+    backend_number: usize,
+    start_time: Option<DateTime<Local>>,
+    end_time: Option<DateTime<Local>>,
+) {
+    let historical_data_read = DATA.vmstat.read().unwrap();
+    let final_start_time = if let Some(final_start_time) = start_time {
+        final_start_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .min()
+            .unwrap_or_default()
+    };
+    let final_end_time = if let Some(final_end_time) = end_time {
+        final_end_time
+    } else {
+        historical_data_read
+            .iter()
+            .map(|v| v.timestamp)
+            .max()
+            .unwrap_or_default()
+    };
+    let latest = historical_data_read.back();
+    let high_value= historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .map(|v| v.nr_dirty_threshold * 1.1_f64)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+
+    // create the plot
+    multi_backend[backend_number].fill(&WHITE).unwrap();
+    let mut contextarea = ChartBuilder::on(&multi_backend[backend_number])
+        .set_label_area_size(LabelAreaPosition::Left, LABEL_AREA_SIZE_LEFT)
+        .set_label_area_size(LabelAreaPosition::Bottom, LABEL_AREA_SIZE_BOTTOM)
+        .set_label_area_size(LabelAreaPosition::Right, LABEL_AREA_SIZE_RIGHT)
+        .caption(
+            "Pages dirty",
+            (CAPTION_STYLE_FONT, CAPTION_STYLE_FONT_SIZE),
+        )
+        .build_cartesian_2d(final_start_time..final_end_time, 0_f64..high_value)
+        .unwrap();
+    contextarea
+        .configure_mesh()
+        .x_labels(6)
+        .x_label_formatter(&|timestamp| timestamp.format("%Y-%m-%dT%H:%M:%S%z").to_string())
+        .x_desc("Time")
+        .y_desc("Pages")
+        .y_label_formatter(&|pages| {
+            if pages < &1_000_f64 {
+                format!("{:6.0}", pages)
+            } else if pages < &1_000_000_f64 {
+                format!("{:7.1} k", pages / 1_000_f64)
+            } else if pages < &1_000_000_000_f64 {
+                format!("{:7.1} m", pages / 1_000_000_f64)
+            } else if pages < &1_000_000_000_000_f64 {
+                format!("{:7.1} t", pages / 1_000_000_000_f64)
+            } else {
+                format!("{:7.1} p", pages / 1_000_000_000_000_f64)
+            }
+        })
+        .label_style((MESH_STYLE_FONT, MESH_STYLE_FONT_SIZE))
+        .draw()
+        .unwrap();
+    // This is a dummy plot for the sole intention to write a header in the legend.
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .take(1)
+                .map(|v| (v.timestamp, v.nr_dirty)),
+            ShapeStyle {
+                color: TRANSPARENT,
+                filled: false,
+                stroke_width: 1,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:>10} {:>10} {:>10}",
+            "", "min", "max", "last"
+        ));
+
+    // nr_dirty
+    let min_dirty = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty > 0_f64)
+        .map(|v| v.nr_dirty)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_dirty = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty > 0_f64)
+        .map(|v| v.nr_dirty)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .inspect(|v| println!("dirty: {}", v.nr_dirty))
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.nr_dirty)),
+            ShapeStyle {
+                color: BLACK.into(),
+                filled: true,
+                stroke_width: 2,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "nr_dirty",
+            min_dirty,
+            max_dirty,
+            latest.map_or(0_f64, |latest| latest.nr_dirty)
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLACK.filled()));
+    // nr_dirty_threshold
+    let min_dirty_threshold = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty_threshold > 0_f64)
+        .map(|v| v.nr_dirty_threshold)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_dirty_threshold = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty_threshold > 0_f64)
+        .map(|v| v.nr_dirty_threshold)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.nr_dirty_threshold)),
+            ShapeStyle {
+                color: PURPLE.into(),
+                filled: true,
+                stroke_width: 2,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "nr_dirty_threshold",
+            min_dirty_threshold,
+            max_dirty_threshold,
+            latest.map_or(0_f64, |latest| latest.nr_dirty_threshold)
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], PURPLE.filled()));
+    // nr_dirty_background_threshold
+    let min_dirty_background_threshold = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty_background_threshold > 0_f64)
+        .map(|v| v.nr_dirty_background_threshold)
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    let max_dirty_background_threshold = historical_data_read
+        .iter()
+        .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+        .filter(|v| v.nr_dirty_background_threshold > 0_f64)
+        .map(|v| v.nr_dirty_background_threshold)
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or_default();
+    contextarea
+        .draw_series(LineSeries::new(
+            historical_data_read
+                .iter()
+                .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
+                .map(|v| (v.timestamp, v.nr_dirty_background_threshold)),
+            ShapeStyle {
+                color: BLUE.into(),
+                filled: true,
+                stroke_width: 2,
+            },
+        ))
+        .unwrap()
+        .label(format!(
+            "{:25} {:10.2} {:10.2} {:10.2}",
+            "nr_dirty_background_threshold",
+            min_dirty_background_threshold,
+            max_dirty_background_threshold,
+            latest.map_or(0_f64, |latest| latest.nr_dirty_background_threshold)
+        ))
+        .legend(move |(x, y)| Rectangle::new([(x - 3, y - 3), (x + 3, y + 3)], BLUE.filled()));
     //
     // draw the legend
     contextarea
