@@ -824,7 +824,6 @@ pub fn pages_dirty(
         .draw_series(LineSeries::new(
             historical_data_read
                 .iter()
-                .inspect(|v| println!("dirty: {}", v.nr_dirty))
                 .filter(|v| v.timestamp >= final_start_time && v.timestamp <= final_end_time)
                 .map(|v| (v.timestamp, v.nr_dirty)),
             ShapeStyle {
